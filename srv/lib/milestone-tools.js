@@ -33,7 +33,7 @@ When called, this tool will display the milestone table to the user for review.`
               },
               percentage: {
                 type: 'number',
-                description: 'Percentage of total contract value. Must be 0 for the final milestone.'
+                description: 'Percentage of total contract value. For milestones 1…(N-1) this is their partial share. For the final milestone (F2) this is always 100.'
               },
               currency: {
                 type: 'string',

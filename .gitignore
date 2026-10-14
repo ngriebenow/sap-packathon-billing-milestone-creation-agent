@@ -23,6 +23,9 @@ npm-debug.log*
 *.xlsx
 *.xls
 
+# Production system dump — real data, never commit
+system-dump/
+
 # OS / editor
 .DS_Store
 Thumbs.db

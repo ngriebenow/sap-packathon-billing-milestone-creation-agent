@@ -6,6 +6,7 @@ const cds          = require('@sap/cds');
 const multer       = require('multer');
 const cookieParser = require('cookie-parser');
 const express      = require('express');
+const path         = require('path');
 const { v4: uuidv4 } = require('uuid');
 
 const upload = multer({ storage: multer.memoryStorage() });
@@ -36,6 +37,7 @@ IMPORTANT: Return ONLY a JSON array, no markdown fences, no explanation:
 
 cds.on('bootstrap', (app) => {
   app.use(cookieParser());
+  app.use('/resources', express.static(path.join(__dirname, 'resources')));
 
   app.post('/upload', upload.array('files'), async (req, res) => {
     const sessionStore = getSessionStore();
@@ -160,9 +162,42 @@ cds.on('bootstrap', (app) => {
       return res.json({ suggestions: Array.isArray(suggestions) ? suggestions.slice(0, 3) : [] });
     } catch (err) {
       console.error('[SuggestSalesOrder] Error:', err.message);
-      // Graceful degradation — the UI can still work without suggestions
       return res.json({ suggestions: [] });
     }
+  });
+
+  // ── POST /api/devMockSession — dev shortcut, seeds a fake session instantly ──
+  app.post('/api/devMockSession', express.json(), (req, res) => {
+    const sessionStore = getSessionStore();
+    const { v4: uuidv4 } = require('uuid');
+    const sid = uuidv4();
+
+    const milestones = [
+      { milestoneNumber: 1, billingDate: '2026-03-01', amount: 87500,  percentage: 25,  currency: 'EUR', description: 'Down payment',                       billingDocumentType: 'FAZ' },
+      { milestoneNumber: 2, billingDate: '2026-06-15', amount: 105000, percentage: 30,  currency: 'EUR', description: 'Design approval & engineering freeze', billingDocumentType: 'FAZ' },
+      { milestoneNumber: 3, billingDate: '2026-09-30', amount: 87500,  percentage: 25,  currency: 'EUR', description: 'Factory acceptance test (FAT)',        billingDocumentType: 'FAZ' },
+      { milestoneNumber: 4, billingDate: '2027-01-15', amount: 350000, percentage: 100, currency: 'EUR', description: 'Final commissioning & handover',       billingDocumentType: 'F2'  },
+    ];
+
+    const session = {
+      salesOrderId: 'DEV-M80550',
+      milestones,
+      status: 'milestones_proposed',
+      conversationHistory: [
+        { role: 'user',      content: '[dev mock session]' },
+        { role: 'assistant', content: '[mock milestones proposed]' },
+      ],
+    };
+    sessionStore.set(sid, session);
+
+    console.log(`[DevMock] Session ${sid} seeded with ${milestones.length} milestones`);
+    res.json({
+      sessionId:   sid,
+      salesOrderId: session.salesOrderId,
+      milestones,
+      status:      'milestones_proposed',
+      reply:       `**[Dev Mock]** Loaded ${milestones.length} hardcoded milestones for Sales Order DEV-M80550. Total: EUR 630,000.00. Click **Analytics** to test the chart, or edit cells directly.`,
+    });
   });
 });
 

@@ -59,9 +59,10 @@ Your task is to analyze sales contract documents and extract all billing milesto
 Rules:
 1. A billing milestone has: a sequential number (starting at 1), a billing date, an absolute amount, a percentage of total, and a currency.
 2. The LAST milestone is always a final invoice (billing type F2). All others are advance invoices (FAZ).
-3. The final milestone represents the full contract total. Its percentage in SAP is always 0 — do not guess a percentage for it.
+3. The final milestone (F2) represents the LAST payment from the contract AND carries the TOTAL contract value as its amount. Its percentage is always 100. It absorbs the last contract percentage — do NOT add an extra milestone for it.
+   Example: contract has 4 milestones at 20%, 30%, 40%, 10% → produce exactly 4 milestones where #4 is F2 with percentage=100 and amount=total contract value.
 4. Dates must be in ISO 8601 format: YYYY-MM-DD.
-5. All milestone amounts and percentages must be consistent with the total contract value.
+5. All milestone amounts must be consistent with the total contract value. Percentages for milestones 1…(N-1) reflect their partial share; the final milestone is always 100.
 6. If you are uncertain about ANY date, amount, percentage, or interpretation — ask the user a specific clarifying question in plain text. Do NOT call the propose_milestones tool when uncertain.
 7. When you have all information with confidence, call the propose_milestones tool.
 8. If the user provides corrections, update your understanding and call propose_milestones again with the corrected data.
@@ -249,7 +250,7 @@ async function suggestText(prompt) {
 
   const body = {
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: { maxOutputTokens: 1024, temperature: 0.1 }
+    generationConfig: { maxOutputTokens: 8192, temperature: 0.1 }
   };
 
   const url = `${baseUrl}/models/${model}:generateContent`;

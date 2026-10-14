@@ -73,15 +73,10 @@
       gap: 8px;
       text-decoration: none;
     }
-    .topbar-sap {
-      background: var(--joule-brand);
-      color: #fff;
-      font-size: 11px;
-      font-weight: 900;
-      padding: 2px 6px;
-      border-radius: 5px;
-      letter-spacing: .8px;
-      line-height: 1.3;
+    .topbar-logo-img {
+      height: 32px;
+      width: auto;
+      display: block;
     }
     .topbar-name {
       font-size: 15px;
@@ -90,16 +85,6 @@
       letter-spacing: -.2px;
     }
     .topbar-spacer { flex: 1; }
-    .topbar-badge {
-      font-size: 11px;
-      padding: 3px 10px;
-      background: var(--joule-pill-bg);
-      color: var(--joule-brand);
-      border: 1px solid rgba(91,142,240,.2);
-      border-radius: 20px;
-      font-weight: 600;
-      letter-spacing: .2px;
-    }
     .topbar-reset {
       background: transparent;
       border: 1px solid var(--joule-border-2);
@@ -340,7 +325,7 @@
     .msg {
       display: flex;
       flex-direction: column;
-      padding: 0 max(24px, calc(50% - 360px));
+      padding: 0 max(24px, calc(50% - 540px));
     }
     .msg.user { align-items: flex-end; }
     .msg.agent { align-items: flex-start; }
@@ -354,7 +339,7 @@
     }
 
     .bubble {
-      max-width: 640px;
+      max-width: 1080px;
       padding: 13px 18px;
       border-radius: 16px;
       font-size: 14px;
@@ -411,7 +396,7 @@
       border-radius: var(--radius-sm);
       overflow: hidden;
       background: var(--joule-surface);
-      max-width: 640px;
+      max-width: 1080px;
     }
     .milestone-card-head {
       display: flex;
@@ -443,7 +428,7 @@
       width: 100%;
       border-collapse: collapse;
       font-size: 13px;
-      min-width: 480px;
+      min-width: 680px;
     }
     .milestone-table thead th {
       padding: 9px 14px;
@@ -467,6 +452,35 @@
     .milestone-table tbody tr:hover td { background: var(--joule-brand-light); }
     .milestone-table tbody tr.final td { background: var(--joule-orange-bg); }
     .milestone-table tbody tr.final:hover td { background: #fde8cc; }
+
+    /* ── Editable cells ─────────────────────────────────────────────── */
+    .cell-editable { cursor: text; position: relative; }
+    .cell-editable:hover { background: rgba(107,64,240,.06) !important; }
+    .cell-editing { padding: 0 !important; position: relative; }
+    .cell-input {
+      width: 100%; height: 100%; padding: 9px 14px;
+      border: none; outline: 2px solid var(--joule-brand); outline-offset: -2px;
+      background: var(--joule-surface); font-family: inherit; font-size: 13px;
+      color: var(--joule-text-1); resize: none; box-sizing: border-box;
+    }
+    .cell-dirty {
+      border-left: 3px solid var(--joule-brand) !important;
+      padding-left: 11px !important;
+    }
+    @keyframes flash-success { 0% { background: var(--joule-green-bg); } 100% { background: inherit; } }
+    @keyframes flash-error   { 0% { background: var(--joule-red-bg);   } 100% { background: inherit; } }
+    .cell-flash-success { animation: flash-success .6s ease-out forwards; }
+    .cell-flash-error   { animation: flash-error   .6s ease-out forwards; }
+    /* Date picker — align native calendar icon with the cell */
+    .cell-input[type="date"] { cursor: pointer; }
+    /* Type dropdown inline in cell */
+    .cell-type-select {
+      border: none; outline: 2px solid var(--joule-brand); outline-offset: -2px;
+      background: var(--joule-surface); font-family: inherit; font-size: 12px;
+      font-weight: 700; color: var(--joule-brand); border-radius: 0;
+      padding: 2px 6px; cursor: pointer; width: 100%;
+    }
+    .cell-type-select:focus { outline: 2px solid var(--joule-brand); }
 
     .type-tag {
       display: inline-block;
@@ -510,7 +524,7 @@
 
     .input-bar {
       flex-shrink: 0;
-      padding: 16px max(24px, calc(50% - 360px));
+      padding: 16px max(24px, calc(50% - 540px));
       border-top: 1px solid var(--joule-border);
       background: var(--joule-surface);
     }
@@ -564,15 +578,13 @@
     }
     .send-btn:disabled { opacity: .35; cursor: not-allowed; }
 
-    /* ── Status line above input ────────────────────────────────────── */
+    /* ── Status line in topbar ──────────────────────────────────────── */
     .status-line {
       display: flex;
       align-items: center;
-      justify-content: center;
       gap: 7px;
       font-size: 12px;
       color: var(--joule-text-3);
-      padding-bottom: 10px;
     }
     .status-dot {
       width: 7px; height: 7px;
@@ -705,7 +717,7 @@
       border-radius: var(--radius-sm);
       overflow: hidden;
       background: var(--joule-surface);
-      max-width: 640px;
+      max-width: 1080px;
     }
     .analytics-panel-head {
       display: flex;
@@ -746,6 +758,32 @@
       border-top: 1px solid var(--joule-border);
       background: var(--joule-surface-2);
     }
+    .savings-banner {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      background: linear-gradient(90deg, rgba(107,64,240,.08) 0%, rgba(107,64,240,.03) 100%);
+      border-bottom: 1px solid var(--joule-border);
+    }
+    .savings-amount {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--joule-brand);
+      white-space: nowrap;
+    }
+    .savings-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--joule-text-2);
+    }
+    .savings-reasoning {
+      font-size: 13px;
+      color: var(--joule-text-2);
+      line-height: 1.4;
+    }
     .risk-badge {
       display: inline-block;
       padding: 2px 10px;
@@ -771,6 +809,35 @@
     .opt-main { color: var(--joule-text-1); font-weight: 600; }
     .opt-change { font-size: 12px; color: var(--joule-brand); }
     .opt-reason { font-size: 12px; color: var(--joule-text-2); }
+
+    .cashflow-chart-wrap {
+      padding: 16px 16px 8px;
+      border-bottom: 1px solid var(--joule-border);
+      background: var(--joule-surface);
+    }
+    .cashflow-chart-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--joule-text-2);
+      margin-bottom: 10px;
+    }
+    .cashflow-legend {
+      display: flex;
+      gap: 20px;
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--joule-text-2);
+    }
+    .cashflow-legend-dot {
+      display: inline-block;
+      width: 12px;
+      height: 3px;
+      border-radius: 2px;
+      vertical-align: middle;
+      margin-right: 5px;
+    }
   </style>
 </head>
 <body>
@@ -779,11 +846,14 @@
   <!-- ── Top bar ───────────────────────────────────────────────────────────── -->
   <header class="topbar">
     <a class="topbar-logo" href="#">
-      <span class="topbar-sap">SAP</span>
+      <img src="/resources/andritz-logo.svg" alt="ANDRITZ" class="topbar-logo-img">
       <span class="topbar-name">Billing Milestone Agent</span>
     </a>
     <div class="topbar-spacer"></div>
-    <span class="topbar-badge" id="topbarBadge">Powered by Gemini 2.5 Pro</span>
+    <div class="status-line" id="topbarStatus">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="statusText">Start a conversation</span>
+    </div>
     <button class="topbar-reset" id="resetBtn" onclick="resetSession()" style="display:none">
       &#8635; New session
     </button>
@@ -843,10 +913,6 @@
       <div class="messages" id="messages"></div>
 
       <div class="input-bar">
-        <div class="status-line">
-          <div class="status-dot" id="statusDot"></div>
-          <span id="statusText">Start a conversation</span>
-        </div>
         <div class="input-wrap">
           <textarea id="chatInput" class="chat-textarea" rows="1"
             placeholder="Ask a follow-up or request a correction…"
@@ -870,16 +936,20 @@ let isWorking = false;
 let selectedFiles = [];
 let soSuggestionsData = [];
 let soSuggestDebounce = null;
+let latestMilestones = [];
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
 window.addEventListener('load', () => {
-  // Always start fresh on page load — the server session is gone anyway
   localStorage.removeItem('bmca_session');
   setupDrop();
-  // Close suggestion dropdown when clicking outside
   document.addEventListener('click', e => {
     if (!e.target.closest('.so-suggestion-wrapper')) closeSoSuggestions();
   });
+
+  // Dev shortcut: ?mockSession=1 seeds a fake session instantly (no upload needed)
+  if (new URLSearchParams(location.search).get('mockSession') === '1') {
+    activateMockSession();
+  }
 });
 
 // ── Screen switching ──────────────────────────────────────────────────────────
@@ -888,6 +958,25 @@ function showChatScreen() {
   document.getElementById('chatScreen').classList.add('active');
   document.getElementById('resetBtn').style.display = '';
   document.getElementById('chatInput').focus();
+}
+
+// ── Mock session (dev only) ───────────────────────────────────────────────────
+// Activate with: http://localhost:4004/?mockSession=1
+// Seeds a fake session on the server instantly — no document upload needed.
+async function activateMockSession() {
+  try {
+    const res  = await fetch('/api/devMockSession', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+    const data = await res.json();
+    const env  = data.value ?? data;
+    if (!env.sessionId) throw new Error('No sessionId returned');
+    sessionId = env.sessionId;
+    showChatScreen();
+    setStatus('active', `[DEV] Mock session — Sales Order ${env.salesOrderId}`);
+    addMsg('agent', env.reply, env.milestones, 'milestones_proposed');
+    document.getElementById('sendBtn').disabled = false;
+  } catch (e) {
+    console.error('[mockSession]', e);
+  }
 }
 
 function showWelcomeScreen() {
@@ -1157,7 +1246,10 @@ async function showAnalytics(btn) {
   const optData  = optResult.status  === 'fulfilled' ? optResult.value  : null;
 
   if (!riskData && !optData) {
-    addMsg('agent', '**Analytics error:** Could not retrieve analytics. Please try again.');
+    const riskErr = riskResult.status === 'rejected' ? riskResult.reason?.message : null;
+    const optErr  = optResult.status  === 'rejected' ? optResult.reason?.message  : null;
+    const detail  = riskErr || optErr || 'Unknown error';
+    addMsg('agent', `**Analytics error:** ${detail}`);
     btn.disabled = false;
     btn.textContent = 'Analytics';
     return;
@@ -1173,10 +1265,24 @@ async function showAnalytics(btn) {
   bubble.innerHTML = '<strong>Predictive Analytics</strong><br>Here is the risk assessment and optimization suggestion for the current billing plan.';
 
   if (riskData) bubble.appendChild(buildRiskPanel(riskData));
-  if (optData)  bubble.appendChild(buildOptimizationPanel(optData));
+  let pendingChart = null;
+  if (optData)  {
+    const { panel, chartCanvas, chartCurrent, chartOptimised } = buildOptimizationPanel(optData, latestMilestones);
+    bubble.appendChild(panel);
+    if (chartCanvas) pendingChart = { canvas: chartCanvas, current: chartCurrent, optimised: chartOptimised, savings: optData.financialSavings };
+  }
 
   wrap.appendChild(bubble);
   container.appendChild(wrap);
+
+  // Draw chart now — element is live in the DOM so clientWidth is available
+  if (pendingChart) {
+    const { canvas, current, optimised, savings } = pendingChart;
+    canvas.width  = canvas.parentElement.clientWidth - 32;
+    canvas.height = 260;
+    drawCashflowChart(canvas, current, optimised, savings);
+  }
+
   wrap.scrollIntoView({ behavior: 'smooth', block: 'end' });
 
   btn.disabled = false;
@@ -1216,12 +1322,51 @@ function buildRiskPanel(data) {
   return panel;
 }
 
-function buildOptimizationPanel(data) {
+function buildOptimizationPanel(data, currentMilestones) {
   const panel = document.createElement('div');
   panel.className = 'analytics-panel';
   panel.innerHTML = `<div class="analytics-panel-head"><span>Billing Plan Optimization</span></div>`;
 
-  const rows = (data.suggestion || []).map(s => `
+  if (data.financialSavings && data.financialSavings.amount > 0) {
+    const fs = data.financialSavings;
+    const formatted = Number(fs.amount).toLocaleString('de-DE', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    panel.innerHTML += `
+      <div class="savings-banner">
+        <div>
+          <div class="savings-label">Estimated Financial Benefit</div>
+          <div class="savings-amount">+ ${formatted} ${esc(fs.currency || 'EUR')}</div>
+        </div>
+        <div class="savings-reasoning">${esc(fs.reasoning || '')}</div>
+      </div>`;
+  }
+
+  const suggestion = data.suggestion || [];
+  let chartCanvas = null;
+
+  if (suggestion.length > 0 && currentMilestones && currentMilestones.length > 0) {
+    const chartWrap = document.createElement('div');
+    chartWrap.className = 'cashflow-chart-wrap';
+
+    const titleDiv = document.createElement('div');
+    titleDiv.className = 'cashflow-chart-title';
+    titleDiv.textContent = 'Cumulative Cash Flow';
+    chartWrap.appendChild(titleDiv);
+
+    chartCanvas = document.createElement('canvas');
+    chartWrap.appendChild(chartCanvas);
+
+    const legendDiv = document.createElement('div');
+    legendDiv.className = 'cashflow-legend';
+    legendDiv.innerHTML = `
+      <span><span class="cashflow-legend-dot" style="background:#6b6b6b"></span>Current plan</span>
+      <span><span class="cashflow-legend-dot" style="background:#6b40f0"></span>Optimised plan</span>`;
+    chartWrap.appendChild(legendDiv);
+
+    panel.appendChild(chartWrap);
+  }
+
+  const rowsDiv = document.createElement('div');
+  rowsDiv.innerHTML = suggestion.map(s => `
     <div class="opt-row">
       <div class="analytics-num">#${s.milestoneNumber}</div>
       <div class="opt-details">
@@ -1230,12 +1375,279 @@ function buildOptimizationPanel(data) {
         <div class="opt-reason">${esc(s.changeReason||'')}</div>
       </div>
     </div>`).join('');
+  panel.appendChild(rowsDiv);
 
-  panel.innerHTML += rows;
   if (data.explanation) {
-    panel.innerHTML += `<div class="analytics-summary">${esc(data.explanation)}</div>`;
+    const sumDiv = document.createElement('div');
+    sumDiv.className = 'analytics-summary';
+    sumDiv.textContent = data.explanation;
+    panel.appendChild(sumDiv);
   }
-  return panel;
+
+  return { panel, chartCanvas, chartCurrent: currentMilestones, chartOptimised: suggestion };
+}
+
+function drawCashflowChart(canvas, current, optimised, financialSavings) {
+  const W = canvas.width;
+  const H = canvas.height;
+  if (!W || !H) return;
+
+  const PAD = { top: 32, right: 24, bottom: 40, left: 72 };
+  const ctx = canvas.getContext('2d');
+
+  const COLOR_CURRENT = '#6b6b6b';
+  const COLOR_OPT     = '#6b40f0';
+  const COLOR_GRID    = '#e8e8e8';
+  const COLOR_LABEL   = '#89919a';
+
+  function parseSeries(items, dateKey, amountKey) {
+    return items
+      .map(m => ({ date: new Date(m[dateKey] || m.billingDate), amount: Number(m[amountKey] || m.amount || 0) }))
+      .filter(p => !isNaN(p.date.getTime()) && p.amount > 0)
+      .sort((a, b) => a.date - b.date);
+  }
+
+  const seriesCurrent = parseSeries(current,   'billingDate',   'amount');
+  const seriesOpt     = parseSeries(optimised, 'suggestedDate', 'suggestedAmount');
+  if (seriesCurrent.length === 0 && seriesOpt.length === 0) return;
+
+  function toCumulative(series) {
+    let cum = 0;
+    return series.map(p => { cum += p.amount; return { date: p.date, cum }; });
+  }
+
+  const cumCurrent = toCumulative(seriesCurrent);
+  const cumOpt     = toCumulative(seriesOpt);
+  const allPoints  = [...cumCurrent, ...cumOpt];
+
+  const minDate = new Date(Math.min(...allPoints.map(p => p.date)));
+  const maxDate = new Date(Math.max(...allPoints.map(p => p.date)));
+  const maxCum  = Math.max(...allPoints.map(p => p.cum));
+
+  // Pad date range by one month each side so lines don't touch the axes
+  const pad1m = 30 * 86400000;
+  const t0 = minDate.getTime() - pad1m;
+  const t1 = maxDate.getTime() + pad1m;
+
+  const chartW = W - PAD.left - PAD.right;
+  const chartH = H - PAD.top  - PAD.bottom;
+
+  function xOf(ms)  { return PAD.left + ((ms - t0) / (t1 - t0)) * chartW; }
+  function yOf(val) { return PAD.top  + chartH - (val / maxCum) * chartH; }
+
+  ctx.clearRect(0, 0, W, H);
+
+  // ── Monthly vertical grid lines + x-axis labels ───────────────────────────
+  // Walk month-by-month from the first month inside the range
+  const startMonth = new Date(new Date(t0).getFullYear(), new Date(t0).getMonth(), 1);
+  const endMonth   = new Date(new Date(t1).getFullYear(), new Date(t1).getMonth() + 2, 1);
+
+  // How many months in range? — pick label density
+  const totalMonths = (endMonth.getFullYear() - startMonth.getFullYear()) * 12
+                    + (endMonth.getMonth() - startMonth.getMonth());
+  const labelEvery  = totalMonths <= 12 ? 1 : totalMonths <= 24 ? 2 : 3;
+
+  ctx.font         = '11px system-ui, sans-serif';
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'top';
+
+  let monthIdx = 0;
+  for (let d = new Date(startMonth); d < endMonth; d = new Date(d.getFullYear(), d.getMonth() + 1, 1)) {
+    const x = xOf(d.getTime());
+    if (x < PAD.left || x > W - PAD.right) { monthIdx++; continue; }
+
+    // Grid line
+    ctx.strokeStyle = COLOR_GRID;
+    ctx.lineWidth   = 1;
+    ctx.beginPath(); ctx.moveTo(x, PAD.top); ctx.lineTo(x, H - PAD.bottom); ctx.stroke();
+
+    // Label every N months
+    if (monthIdx % labelEvery === 0) {
+      ctx.fillStyle = COLOR_LABEL;
+      const label = d.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' });
+      ctx.fillText(label, x, H - PAD.bottom + 6);
+    }
+    monthIdx++;
+  }
+
+  // ── Horizontal Y-axis grid lines + labels ─────────────────────────────────
+  const gridSteps = 4;
+  for (let i = 0; i <= gridSteps; i++) {
+    const val = (maxCum / gridSteps) * i;
+    const y   = yOf(val);
+    ctx.strokeStyle = COLOR_GRID;
+    ctx.lineWidth   = 1;
+    ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(W - PAD.right, y); ctx.stroke();
+
+    ctx.fillStyle    = COLOR_LABEL;
+    ctx.font         = '11px system-ui, sans-serif';
+    ctx.textAlign    = 'right';
+    ctx.textBaseline = 'middle';
+    const label = val >= 1e6
+      ? (val / 1e6).toFixed(1) + 'M'
+      : val >= 1e3 ? (val / 1e3).toFixed(0) + 'k' : val.toFixed(0);
+    ctx.fillText(label, PAD.left - 6, y);
+  }
+
+  // ── Catmull-Rom spline ────────────────────────────────────────────────────
+  // Passes smoothly through every point, no artificial anchors that cause kinks.
+  // Returns the pixel-space points so the fill and label passes can reuse them.
+  function catmullRomPath(cumSeries) {
+    if (cumSeries.length === 0) return [];
+    const pts = cumSeries.map(p => ({ x: xOf(p.date.getTime()), y: yOf(p.cum) }));
+    return pts;
+  }
+
+  function buildCatmullRomSubpath(ctx, pts) {
+    const p = [pts[0], ...pts, pts[pts.length - 1]];
+    const n = p.length;
+    ctx.moveTo(p[1].x, p[1].y);
+    for (let i = 1; i < n - 2; i++) {
+      const tx1 = (p[i + 1].x - p[i - 1].x) / 2;
+      const ty1 = (p[i + 1].y - p[i - 1].y) / 2;
+      const tx2 = (p[i + 2].x - p[i].x)     / 2;
+      const ty2 = (p[i + 2].y - p[i].y)     / 2;
+      ctx.bezierCurveTo(
+        p[i].x     + tx1 / 3, p[i].y     + ty1 / 3,
+        p[i + 1].x - tx2 / 3, p[i + 1].y - ty2 / 3,
+        p[i + 1].x, p[i + 1].y
+      );
+    }
+  }
+
+  const ptsCurrent = catmullRomPath(cumCurrent);
+  const ptsOpt     = catmullRomPath(cumOpt);
+
+  // ── Fill area between curves ──────────────────────────────────────────────
+  if (ptsCurrent.length > 0 && ptsOpt.length > 0) {
+    ctx.save();
+    ctx.beginPath();
+    buildCatmullRomSubpath(ctx, ptsCurrent);          // forward along current
+    // reverse along optimised
+    const pRev = [ptsOpt[ptsOpt.length - 1], ...ptsOpt.slice().reverse(), ptsOpt[0]];
+    const pRevN = pRev.length;
+    ctx.lineTo(pRev[1].x, pRev[1].y);
+    for (let i = 1; i < pRevN - 2; i++) {
+      const tx1 = (pRev[i + 1].x - pRev[i - 1].x) / 2;
+      const ty1 = (pRev[i + 1].y - pRev[i - 1].y) / 2;
+      const tx2 = (pRev[i + 2].x - pRev[i].x)     / 2;
+      const ty2 = (pRev[i + 2].y - pRev[i].y)     / 2;
+      ctx.bezierCurveTo(
+        pRev[i].x     + tx1 / 3, pRev[i].y     + ty1 / 3,
+        pRev[i + 1].x - tx2 / 3, pRev[i + 1].y - ty2 / 3,
+        pRev[i + 1].x, pRev[i + 1].y
+      );
+    }
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(107, 64, 240, 0.08)';
+    ctx.fill();
+    ctx.restore();
+
+    // Financial benefit label — vertically centred between the two curves at the midpoint X
+    if (financialSavings && financialSavings.amount > 0) {
+      // Use midpoint of the data X range (not the full canvas), then interpolate Y on each curve
+      const allDataX = [...ptsCurrent, ...ptsOpt].map(p => p.x);
+      const midX = (Math.min(...allDataX) + Math.max(...allDataX)) / 2;
+
+      // Linear interpolation: find the two bracketing points on a sorted pts array and lerp
+      function interpY(pts, x) {
+        if (pts.length === 1) return pts[0].y;
+        for (let i = 0; i < pts.length - 1; i++) {
+          if (x >= pts[i].x && x <= pts[i + 1].x) {
+            const t = (x - pts[i].x) / (pts[i + 1].x - pts[i].x);
+            return pts[i].y + t * (pts[i + 1].y - pts[i].y);
+          }
+        }
+        // Outside range — clamp to nearest end
+        return x < pts[0].x ? pts[0].y : pts[pts.length - 1].y;
+      }
+
+      const yCurrent = interpY(ptsCurrent, midX);
+      const yOpt     = interpY(ptsOpt,     midX);
+      const midY     = (yCurrent + yOpt) / 2;
+
+      const amt = financialSavings.amount;
+      const cur = financialSavings.currency || '';
+      const lbl = '+' + amt.toLocaleString('de-DE', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' ' + cur;
+
+      ctx.save();
+      ctx.font         = 'bold 12px system-ui, sans-serif';
+      ctx.textAlign    = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle    = 'rgba(107, 64, 240, 0.7)';
+      ctx.fillText(lbl, midX, midY);
+      ctx.restore();
+    }
+  }
+
+  function drawCatmullRom(cumSeries, pts, color) {
+    if (pts.length === 0) return;
+
+    ctx.strokeStyle = color;
+    ctx.lineWidth   = 2.5;
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    buildCatmullRomSubpath(ctx, pts);
+    ctx.stroke();
+
+    // Dots
+    ctx.fillStyle = color;
+    pts.forEach(pt => {
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, 4, 0, 2 * Math.PI);
+      ctx.fill();
+    });
+
+    // Date + amount labels above/below each dot (date on top, amount below it)
+    ctx.save();
+    ctx.textAlign = 'center';
+    const lastIdx = cumSeries.length - 1;
+    cumSeries.forEach((cp, i) => {
+      const pt   = pts[i];
+      const amt  = cp.cum;
+      const amtLbl = amt >= 1e6
+        ? (amt / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'M'
+        : amt >= 1e3 ? (amt / 1e3).toFixed(1).replace(/\.0$/, '') + 'k'
+        : amt.toFixed(0);
+      const dateLbl = cp.date.toISOString().slice(0, 10);  // YYYY-MM-DD
+
+      // Last dot always goes above; others go above unless too close to top edge
+      const above = (i === lastIdx) || (pt.y - PAD.top > 36);
+      ctx.fillStyle = color;
+
+      if (above) {
+        // amount just above dot, date above amount
+        ctx.font         = '11px system-ui, sans-serif';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(amtLbl, pt.x, pt.y - 7);
+        ctx.font         = '10px system-ui, sans-serif';
+        ctx.fillStyle    = COLOR_LABEL;
+        ctx.fillText(dateLbl, pt.x, pt.y - 20);
+      } else {
+        // date just below dot, amount below date
+        ctx.font         = '10px system-ui, sans-serif';
+        ctx.fillStyle    = COLOR_LABEL;
+        ctx.textBaseline = 'top';
+        ctx.fillText(dateLbl, pt.x, pt.y + 7);
+        ctx.font         = '11px system-ui, sans-serif';
+        ctx.fillStyle    = color;
+        ctx.fillText(amtLbl, pt.x, pt.y + 19);
+      }
+    });
+    ctx.restore();
+  }
+
+  drawCatmullRom(cumCurrent, ptsCurrent, COLOR_CURRENT);
+  drawCatmullRom(cumOpt,     ptsOpt,     COLOR_OPT);
+
+  // ── Axes ──────────────────────────────────────────────────────────────────
+  ctx.strokeStyle = '#c8c8c8';
+  ctx.lineWidth   = 1;
+  ctx.beginPath();
+  ctx.moveTo(PAD.left, PAD.top);
+  ctx.lineTo(PAD.left, H - PAD.bottom);
+  ctx.lineTo(W - PAD.right, H - PAD.bottom);
+  ctx.stroke();
 }
 
 // ── Working state ─────────────────────────────────────────────────────────────
@@ -1275,6 +1687,7 @@ function addMsg(sender, text, milestones, status) {
   if (text) bubble.innerHTML = md(text);
 
   if (milestones && milestones.length > 0) {
+    latestMilestones = milestones;
     bubble.appendChild(buildMilestoneCard(milestones, status));
   }
 
@@ -1315,6 +1728,7 @@ function buildMilestoneCard(milestones, status) {
             <th style="text-align:right">%</th>
             <th>Currency</th>
             <th>Type</th>
+            <th>Description</th>
           </tr>
         </thead>
         <tbody id="milestone-tbody-${Date.now()}"></tbody>
@@ -1326,13 +1740,52 @@ function buildMilestoneCard(milestones, status) {
     const isFinal = i === milestones.length - 1;
     const tr = document.createElement('tr');
     if (isFinal) tr.className = 'final';
-    tr.innerHTML = `
-      <td><strong>${m.milestoneNumber}</strong></td>
-      <td>${esc(m.billingDate||'—')}</td>
-      <td style="text-align:right;font-variant-numeric:tabular-nums">${Number(m.amount||0).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
-      <td style="text-align:right">${isFinal ? '—' : Number(m.percentage||0).toFixed(2)+'%'}</td>
-      <td>${esc(m.currency||'—')}</td>
-      <td><span class="type-tag ${isFinal?'f2':'faz'}">${isFinal?'F2':'FAZ'}</span></td>`;
+
+    // # (static)
+    const tdNum = document.createElement('td');
+    tdNum.innerHTML = `<strong>${m.milestoneNumber}</strong>`;
+    tr.appendChild(tdNum);
+
+    // Billing Date (editable always)
+    const tdDate = document.createElement('td');
+    tdDate.textContent = m.billingDate || '—';
+    makeCellEditable(tdDate, m, 'billingDate');
+    tr.appendChild(tdDate);
+
+    // Amount (editable always)
+    const tdAmt = document.createElement('td');
+    tdAmt.style.textAlign = 'right';
+    tdAmt.style.fontVariantNumeric = 'tabular-nums';
+    tdAmt.textContent = Number(m.amount || 0).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    makeCellEditable(tdAmt, m, 'amount');
+    tr.appendChild(tdAmt);
+
+    // Percentage (editable always)
+    const tdPct = document.createElement('td');
+    tdPct.style.textAlign = 'right';
+    tdPct.textContent = Number(m.percentage || 0).toFixed(2) + '%';
+    makeCellEditable(tdPct, m, 'percentage');
+    tr.appendChild(tdPct);
+
+    // Currency (static)
+    const tdCur = document.createElement('td');
+    tdCur.textContent = m.currency || '—';
+    tr.appendChild(tdCur);
+
+    // Type (dropdown)
+    const currentType = m.billingDocumentType || (isFinal ? 'F2' : 'FAZ');
+    m.billingDocumentType = m.billingDocumentType || currentType;
+    const tdType = document.createElement('td');
+    tdType.style.cursor = 'pointer';
+    makeTypeEditable(tdType, m);
+    tr.appendChild(tdType);
+
+    // Description (editable always)
+    const tdDesc = document.createElement('td');
+    tdDesc.textContent = m.description || '';
+    makeCellEditable(tdDesc, m, 'description');
+    tr.appendChild(tdDesc);
+
     tbody.appendChild(tr);
   });
 
@@ -1341,12 +1794,209 @@ function buildMilestoneCard(milestones, status) {
     actions.className = 'milestone-actions';
     actions.innerHTML = `
       <button class="act-btn primary" onclick="createInSAP()">Create in SAP S/4HANA</button>
-      <button class="act-btn secondary" onclick="document.getElementById('chatInput').focus()">Request Corrections</button>
       <button class="act-btn analytics" onclick="showAnalytics(this)">Analytics</button>`;
     card.appendChild(actions);
   }
 
   return card;
+}
+
+// ── Cell editing ──────────────────────────────────────────────────────────────
+
+function renderCellValue(td, m, field) {
+  if (field === 'amount') {
+    td.textContent = Number(m.amount || 0).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  } else if (field === 'percentage') {
+    td.textContent = Number(m.percentage || 0).toFixed(2) + '%';
+  } else if (field === 'billingDocumentType') {
+    const v = m.billingDocumentType || 'FAZ';
+    td.innerHTML = `<span class="type-tag ${v === 'F2' ? 'f2' : 'faz'}">${v}</span>`;
+  } else {
+    td.textContent = m[field] != null ? String(m[field]) : '';
+  }
+}
+
+function makeCellEditable(td, m, field) {
+  td.classList.add('cell-editable');
+
+  td.addEventListener('click', function() {
+    if (td.classList.contains('cell-editing')) return;
+    td.classList.add('cell-editing');
+    td.classList.remove('cell-editable');
+
+    const originalValue = m[field] != null ? String(m[field]) : '';
+
+    let input;
+    if (field === 'description') {
+      input = document.createElement('textarea');
+      input.rows = 2;
+    } else if (field === 'billingDate') {
+      input = document.createElement('input');
+      input.type = 'date';
+      // Convert display value to YYYY-MM-DD for the date input
+      input.value = originalValue && originalValue !== '—' ? originalValue : '';
+    } else {
+      input = document.createElement('input');
+      input.type = 'text';
+    }
+    input.className = 'cell-input';
+    if (field !== 'billingDate') input.value = originalValue;
+    if (field === 'amount' || field === 'percentage') input.style.textAlign = 'right';
+
+    td.textContent = '';
+    td.appendChild(input);
+    input.focus();
+    if (input.type !== 'date') input.select();
+
+    let committed = false;
+
+    function commit() {
+      if (committed) return;
+      committed = true;
+      td.classList.remove('cell-editing');
+      td.classList.add('cell-editable');
+      commitEdit(td, m, field, input.value.trim(), originalValue);
+    }
+
+    input.addEventListener('blur', commit);
+    input.addEventListener('change', () => {
+      // date inputs fire 'change' on picker selection — commit immediately
+      if (field === 'billingDate') { input.blur(); }
+    });
+    input.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter' && field !== 'description') {
+        ev.preventDefault();
+        input.blur();
+      }
+      if (ev.key === 'Escape') {
+        committed = true;
+        td.classList.remove('cell-editing');
+        td.classList.add('cell-editable');
+        renderCellValue(td, m, field);
+      }
+    });
+  });
+}
+
+function makeTypeEditable(td, m) {
+  renderCellValue(td, m, 'billingDocumentType');
+  td.classList.add('cell-editable');
+  td.style.cursor = 'pointer';
+
+  td.addEventListener('click', function() {
+    if (td.classList.contains('cell-editing')) return;
+    td.classList.add('cell-editing');
+    td.classList.remove('cell-editable');
+
+    const originalValue = m.billingDocumentType || 'FAZ';
+
+    const sel = document.createElement('select');
+    sel.className = 'cell-type-select';
+    ['FAZ', 'F2'].forEach(opt => {
+      const o = document.createElement('option');
+      o.value = o.textContent = opt;
+      if (opt === originalValue) o.selected = true;
+      sel.appendChild(o);
+    });
+
+    td.textContent = '';
+    td.appendChild(sel);
+    sel.focus();
+
+    let committed = false;
+
+    function commit() {
+      if (committed) return;
+      committed = true;
+      td.classList.remove('cell-editing');
+      td.classList.add('cell-editable');
+      commitEdit(td, m, 'billingDocumentType', sel.value, originalValue);
+    }
+
+    sel.addEventListener('blur',   commit);
+    sel.addEventListener('change', () => sel.blur());
+    sel.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Escape') {
+        committed = true;
+        td.classList.remove('cell-editing');
+        td.classList.add('cell-editable');
+        renderCellValue(td, m, 'billingDocumentType');
+      }
+    });
+  });
+}
+
+async function commitEdit(td, m, field, newValue, originalValue) {
+  // Client-side validation
+  if (field === 'billingDate') {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(newValue) || isNaN(Date.parse(newValue))) {
+      td.classList.add('cell-flash-error');
+      td.addEventListener('animationend', () => td.classList.remove('cell-flash-error'), { once: true });
+      toast('Billing date must be YYYY-MM-DD.', 'error');
+      renderCellValue(td, m, field);
+      return;
+    }
+  } else if (field === 'amount') {
+    const n = parseFloat(newValue);
+    if (!isFinite(n) || n <= 0) {
+      td.classList.add('cell-flash-error');
+      td.addEventListener('animationend', () => td.classList.remove('cell-flash-error'), { once: true });
+      toast('Amount must be a positive number.', 'error');
+      renderCellValue(td, m, field);
+      return;
+    }
+  } else if (field === 'percentage') {
+    const n = parseFloat(newValue);
+    if (!isFinite(n) || n < 1 || n > 100) {
+      td.classList.add('cell-flash-error');
+      td.addEventListener('animationend', () => td.classList.remove('cell-flash-error'), { once: true });
+      toast('Percentage must be between 1 and 100.', 'error');
+      renderCellValue(td, m, field);
+      return;
+    }
+  } else if (field === 'description') {
+    if (newValue.length > 200) {
+      td.classList.add('cell-flash-error');
+      td.addEventListener('animationend', () => td.classList.remove('cell-flash-error'), { once: true });
+      toast('Description must be 200 characters or less.', 'error');
+      renderCellValue(td, m, field);
+      return;
+    }
+  }
+
+  // No-op if unchanged
+  if (newValue === originalValue) { renderCellValue(td, m, field); return; }
+
+  try {
+    const res      = await fetch('/api/updateMilestone', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ sessionId, milestoneNumber: m.milestoneNumber, field, value: newValue })
+    });
+    const envelope = await res.json();
+
+    if (!res.ok) {
+      td.classList.add('cell-flash-error');
+      td.addEventListener('animationend', () => td.classList.remove('cell-flash-error'), { once: true });
+      toast(envelope.error?.message || 'Update failed.', 'error');
+      renderCellValue(td, m, field);
+      return;
+    }
+
+    const data = envelope.value ?? envelope;
+    if (field === 'amount' || field === 'percentage') m[field] = parseFloat(data.newValue);
+    else m[field] = data.newValue;
+
+    renderCellValue(td, m, field);
+    td.classList.add('cell-dirty');
+    td.classList.add('cell-flash-success');
+    td.addEventListener('animationend', () => td.classList.remove('cell-flash-success'), { once: true });
+  } catch (err) {
+    td.classList.add('cell-flash-error');
+    td.addEventListener('animationend', () => td.classList.remove('cell-flash-error'), { once: true });
+    toast('Connection error: ' + err.message, 'error');
+    renderCellValue(td, m, field);
+  }
 }
 
 // ── Typing indicator ──────────────────────────────────────────────────────────

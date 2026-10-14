@@ -70,6 +70,26 @@ service AgentService {
       description     : String;
       changeReason    : String;
     };
-    explanation : String;
+    explanation       : String;
+    financialSavings  : {
+      amount    : Decimal(16,2);
+      currency  : String;
+      reasoning : String;
+    };
+  };
+  /**
+   * Silently updates a single editable field on a milestone in the session.
+   * Called from the inline table editor — no AI round-trip.
+   */
+  action updateMilestone(
+    sessionId       : String,
+    milestoneNumber : Integer,
+    field           : String,
+    value           : String
+  ) returns {
+    success         : Boolean;
+    milestoneNumber : Integer;
+    field           : String;
+    newValue        : String;
   };
 }

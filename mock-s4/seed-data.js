@@ -86,7 +86,7 @@ function buildSO(i) {
     const seed = (i * milestoneCount + m) * 7;
     const status = (seed % 10) < 3 ? 'paid' : (seed % 10) === 9 ? 'late' : 'open';
 
-    const pct    = isLast ? 0 : percentages[m];
+    const pct    = isLast ? 100 : percentages[m];
     const amount = isLast
       ? contractValue
       : Math.round(contractValue * (percentages[m] / 100) * 100) / 100;
@@ -114,19 +114,18 @@ function buildSO(i) {
   };
 }
 
-// Spread percentages over non-final milestones (total must be < 100, last carries remainder)
+// Spread percentages over ALL milestones including the final one (total = 100)
 function buildPercentages(count) {
-  if (count <= 1) return [];
-  const nonFinal = count - 1;
-  const perSlot  = Math.floor(100 / count);           // base chunk per non-final
-  const result   = [];
+  if (count <= 1) return [100];
+  const perSlot = Math.floor(100 / count);
+  const result  = [];
   let used = 0;
-  for (let i = 0; i < nonFinal; i++) {
-    const pct = (i === nonFinal - 1) ? 100 - used : perSlot;
+  for (let i = 0; i < count; i++) {
+    const pct = (i === count - 1) ? 100 - used : perSlot;
     result.push(pct);
     used += pct;
   }
-  return result;  // last SAP milestone always percentage=0 (final invoice)
+  return result;
 }
 
 function addDays(dateStr, days) {
@@ -159,8 +158,7 @@ function seedIntoMap(billingPlanItems) {
         TransactionCurrency:         m.currency,
         BillingPlanBilledAmount:     m.status === 'paid' ? String(m.amount) : '0.00',
         BillingPlanItemDescription:  m.description,
-        BillingPlanItemPercentage:   String(m.percentage),
-        PaymentStatus:               m.status,
+        BillingPlanItemPercentage:   String(m.percentage),        PaymentStatus:               m.status,
       };
     });
     billingPlanItems.set(`${so.SalesOrderID}:${MOCK_BILLING_PLAN_ID}`, items);

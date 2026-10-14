@@ -1,8 +1,9 @@
 'use strict';
 
-const express  = require('express');
-const path     = require('path');
-const seedData = require('./seed-data');
+const express    = require('express');
+const path       = require('path');
+const seedData   = require('./seed-data');
+const systemDump = require('./load-system-dump');
 
 const app = express();
 app.use(express.json());
@@ -14,7 +15,10 @@ const billingPlanItems = new Map();
 
 // Seed 100 synthetic sales orders into the in-memory store on startup
 seedData.seedIntoMap(billingPlanItems);
-console.log(`[Mock S4] Loaded ${seedData.SALES_ORDERS.length} seed sales orders`);
+console.log(`[Mock S4] Loaded ${seedData.SALES_ORDERS.length} synthetic seed sales orders`);
+
+// Load real production data (async-safe: synchronous XLSX parse, cached after first call)
+const dump = systemDump.load();
 
 // Every sales order gets this hardcoded billing plan ID (matches reference data)
 const MOCK_BILLING_PLAN_ID = seedData.MOCK_BILLING_PLAN_ID;
@@ -94,6 +98,41 @@ app.get(`${BASE_PATH}/*`, (req, res, next) => {
     return res.json({ d: { EntitySets: ['A_SalesOrder', 'A_SalesOrderBillingPlan', 'A_SalesOrderBillingPlanItem'] } });
   }
 
+  // ── Real production data endpoints ────────────────────────────────────────
+
+  // GET /A_SalesOrderBillingPlan — all real billing plan headers (with enrichment)
+  // Supports optional $filter on NetAmount: ?minValue=50000&maxValue=200000
+  if (urlPath === '/A_SalesOrderBillingPlan') {
+    let plans = dump.allPlans.map(p => ({
+      SalesOrder:           p.SalesOrder,
+      BillingPlan:          p.BillingPlan,
+      BillingPlanType:      p.BillingPlanType,
+      BillingPlanCategory:  p.BillingPlanCategory,
+      BillingPlanStartDate: p.BillingPlanStartDate,
+      BillingPlanEndDate:   p.BillingPlanEndDate,
+      NetAmount:            p.NetAmount,
+      TransactionCurrency:  p.TransactionCurrency,
+      CustomerName:         p.CustomerName,
+      CustomerCountry:      p.CustomerCountry,
+      Incoterms:            p.Incoterms,
+      CustomerPaymentTerms: p.CustomerPaymentTerms,
+      ItemCount:            p.items.length,
+    }));
+    const minVal = parseFloat(req.query.minValue);
+    const maxVal = parseFloat(req.query.maxValue);
+    if (isFinite(minVal)) plans = plans.filter(p => p.NetAmount >= minVal);
+    if (isFinite(maxVal)) plans = plans.filter(p => p.NetAmount <= maxVal);
+    return res.json({ d: { results: plans, __count: String(plans.length) } });
+  }
+
+  // GET /A_SalesOrderBillingPlan('<fplnr>')/to_BillingPlanItem — items for a real plan
+  const getRealItems = urlPath.match(/^\/A_SalesOrderBillingPlan\('([^']+)'\)\/to_BillingPlanItem$/);
+  if (getRealItems) {
+    const fplnr = getRealItems[1];
+    const items = dump.planItems.get(fplnr) || [];
+    return res.json({ d: { results: items } });
+  }
+
   // Match: /A_SalesOrder('<salesOrder>')/to_BillingPlan
   const getBillingPlan = urlPath.match(/^\/A_SalesOrder\('([^']+)'\)\/to_BillingPlan$/);
   if (getBillingPlan) {
@@ -118,11 +157,12 @@ app.get(`${BASE_PATH}/*`, (req, res, next) => {
     return res.json({ d: { results: items } });
   }
 
-  // Match: /A_SalesOrderBillingPlanItem — list all items for query params
+  // Match: /A_SalesOrderBillingPlanItem — list all items (synthetic + real)
   if (urlPath === '/A_SalesOrderBillingPlanItem') {
-    const allItems = [];
-    billingPlanItems.forEach(items => allItems.push(...items));
-    return res.json({ d: { results: allItems } });
+    const syntheticItems = [];
+    billingPlanItems.forEach(items => syntheticItems.push(...items));
+    const allItems = [...syntheticItems, ...dump.allItems];
+    return res.json({ d: { results: allItems, __count: String(allItems.length) } });
   }
 
   next();
