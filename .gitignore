@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+mock-s4/node_modules/
+
+# Environment / credentials — NEVER commit
+.env
+.env.*
+!.env.example
+
+# SAP CDS build artifacts
+gen/
+.cds-mtxs/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Test payloads and uploaded documents
+*.pdf
+*.PDF
+*.docx
+*.doc
+*.xlsx
+*.xls
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Lock files (optional — keep package-lock.json for reproducibility)
+# package-lock.json

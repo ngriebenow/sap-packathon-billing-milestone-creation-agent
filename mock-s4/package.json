@@ -1,0 +1,12 @@
+{
+  "name": "mock-s4-server",
+  "version": "1.0.0",
+  "description": "Mock SAP S/4HANA OData server for local development",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4"
+  }
+}

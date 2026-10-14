@@ -1,0 +1,13 @@
+{
+  "requires": {
+    "db": {
+      "kind": "sqlite",
+      "credentials": {
+        "database": ":memory:"
+      }
+    }
+  },
+  "server": {
+    "cors": true
+  }
+}

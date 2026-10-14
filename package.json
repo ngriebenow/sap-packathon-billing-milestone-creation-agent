@@ -1,0 +1,21 @@
+{
+  "name": "billing-milestone-agent",
+  "version": "1.0.0",
+  "description": "CAP-based billing milestone creation agent for SAP S/4HANA",
+  "scripts": {
+    "start": "cds run",
+    "dev": "cds watch",
+    "mock-s4": "node mock-s4/server.js"
+  },
+  "dependencies": {
+    "@sap/cds": "^8",
+    "cookie-parser": "^1",
+    "express": "^4",
+    "multer": "^1",
+    "node-fetch": "^2",
+    "uuid": "^9"
+  },
+  "devDependencies": {
+    "@sap/cds-dk": "^8"
+  }
+}

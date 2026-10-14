@@ -1,0 +1,1388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Billing Milestone Agent</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      /* Joule light palette */
+      --joule-bg:          #f7f7f8;
+      --joule-surface:     #ffffff;
+      --joule-surface-2:   #f0f0f2;
+      --joule-border:      rgba(0,0,0,.08);
+      --joule-border-2:    rgba(0,0,0,.13);
+      /* Joule violet-purple brand */
+      --joule-brand:       #6b40f0;
+      --joule-brand-hover: #5a32d4;
+      --joule-brand-glow:  rgba(107,64,240,.18);
+      --joule-brand-light: rgba(107,64,240,.08);
+      /* Text */
+      --joule-text-1:      #1a1a2e;
+      --joule-text-2:      #4a4a6a;
+      --joule-text-3:      #8888aa;
+      /* Semantic */
+      --joule-green:       #1a8a4a;
+      --joule-green-bg:    #eaf6ee;
+      --joule-orange:      #b05a00;
+      --joule-orange-bg:   #fff3e6;
+      --joule-red:         #cc2222;
+      --joule-red-bg:      #fff0f0;
+      /* Bubbles */
+      --joule-user-msg:    #6b40f0;
+      --joule-pill-bg:     rgba(107,64,240,.09);
+      --radius:            14px;
+      --radius-sm:         8px;
+      --transition:        .18s ease;
+    }
+
+    html, body {
+      height: 100%;
+      font-family: -apple-system, 'Segoe UI', system-ui, Arial, sans-serif;
+      font-size: 15px;
+      background: var(--joule-bg);
+      color: var(--joule-text-1);
+      overflow: hidden;
+    }
+
+    /* ── App shell ──────────────────────────────────────────────────── */
+    .app {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Top bar ────────────────────────────────────────────────────── */
+    .topbar {
+      height: 52px;
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      border-bottom: 1px solid var(--joule-border);
+      flex-shrink: 0;
+      gap: 10px;
+      background: var(--joule-surface);
+      position: relative;
+      z-index: 20;
+    }
+    .topbar-logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+    }
+    .topbar-sap {
+      background: var(--joule-brand);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 900;
+      padding: 2px 6px;
+      border-radius: 5px;
+      letter-spacing: .8px;
+      line-height: 1.3;
+    }
+    .topbar-name {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--joule-text-1);
+      letter-spacing: -.2px;
+    }
+    .topbar-spacer { flex: 1; }
+    .topbar-badge {
+      font-size: 11px;
+      padding: 3px 10px;
+      background: var(--joule-pill-bg);
+      color: var(--joule-brand);
+      border: 1px solid rgba(91,142,240,.2);
+      border-radius: 20px;
+      font-weight: 600;
+      letter-spacing: .2px;
+    }
+    .topbar-reset {
+      background: transparent;
+      border: 1px solid var(--joule-border-2);
+      color: var(--joule-text-2);
+      font-size: 12px;
+      padding: 5px 12px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: var(--transition);
+    }
+    .topbar-reset:hover { border-color: var(--joule-brand); color: var(--joule-brand); }
+
+    /* ── Body ───────────────────────────────────────────────────────── */
+    .body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* subtle radial glow behind content */
+    .body::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 60% 40% at 50% 0%, rgba(107,64,240,.06) 0%, transparent 70%),
+        radial-gradient(ellipse 40% 30% at 80% 80%, rgba(107,64,240,.04) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── WELCOME SCREEN ─────────────────────────────────────────────── */
+    #welcomeScreen {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 24px;
+      z-index: 10;
+    }
+
+    .welcome-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #6b40f0, #9b59f5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      margin-bottom: 20px;
+      box-shadow: 0 8px 32px var(--joule-brand-glow);
+    }
+
+    .welcome-title {
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--joule-text-1);
+      margin-bottom: 8px;
+      letter-spacing: -.4px;
+      text-align: center;
+    }
+
+    .welcome-sub {
+      font-size: 14px;
+      color: var(--joule-text-2);
+      text-align: center;
+      max-width: 400px;
+      line-height: 1.6;
+      margin-bottom: 40px;
+    }
+
+    /* Upload card */
+    .upload-card {
+      width: 100%;
+      max-width: 540px;
+      background: var(--joule-surface);
+      border: 1px solid var(--joule-border-2);
+      border-radius: var(--radius);
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* Drop zone border in light mode */
+    .drop-zone {
+      border: 2px dashed rgba(0,0,0,.18);
+      border-radius: var(--radius-sm);
+      padding: 32px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color var(--transition), background var(--transition);
+    }
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: var(--joule-brand);
+      background: var(--joule-brand-light);
+    }
+    .drop-icon {
+      font-size: 28px;
+      margin-bottom: 10px;
+      opacity: .8;
+    }
+    .drop-text {
+      font-size: 14px;
+      color: var(--joule-text-2);
+      line-height: 1.5;
+    }
+    .drop-link {
+      color: var(--joule-brand);
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .drop-hint {
+      font-size: 12px;
+      color: var(--joule-text-3);
+      margin-top: 4px;
+    }
+
+    /* File chips */
+    .file-chips {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .file-chip {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      background: var(--joule-surface-2);
+      border: 1px solid var(--joule-border);
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+    }
+    .file-chip-icon { font-size: 15px; flex-shrink: 0; }
+    .file-chip-name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--joule-text-1);
+      font-weight: 500;
+    }
+    .file-chip-size { color: var(--joule-text-3); font-size: 11px; flex-shrink: 0; }
+    .file-chip-del {
+      cursor: pointer;
+      color: var(--joule-text-3);
+      font-size: 14px;
+      line-height: 1;
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      flex-shrink: 0;
+      transition: var(--transition);
+    }
+    .file-chip-del:hover { background: var(--joule-red-bg); color: var(--joule-red); }
+
+    /* Field */
+    .field-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--joule-text-3);
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      margin-bottom: 6px;
+    }
+    .field-input {
+      width: 100%;
+      padding: 11px 14px;
+      background: var(--joule-surface-2);
+      border: 1px solid var(--joule-border-2);
+      border-radius: var(--radius-sm);
+      color: var(--joule-text-1);
+      font-size: 15px;
+      font-family: inherit;
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+    .field-input:focus {
+      outline: none;
+      border-color: var(--joule-brand);
+      box-shadow: 0 0 0 3px var(--joule-brand-glow);
+    }
+    .field-input::placeholder { color: var(--joule-text-3); }
+
+    /* Primary btn */
+    .btn-primary {
+      width: 100%;
+      padding: 13px;
+      background: var(--joule-brand);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 15px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background var(--transition), box-shadow var(--transition), opacity var(--transition);
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: var(--joule-brand-hover);
+      box-shadow: 0 4px 20px var(--joule-brand-glow);
+    }
+    .btn-primary:disabled { opacity: .45; cursor: not-allowed; }
+
+    #fileInput { display: none; }
+
+    /* ── CHAT SCREEN ────────────────────────────────────────────────── */
+    #chatScreen {
+      position: absolute;
+      inset: 0;
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+      z-index: 10;
+    }
+    #chatScreen.active { display: flex; }
+
+    /* Messages area */
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 32px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    /* Message row */
+    .msg {
+      display: flex;
+      flex-direction: column;
+      padding: 0 max(24px, calc(50% - 360px));
+    }
+    .msg.user { align-items: flex-end; }
+    .msg.agent { align-items: flex-start; }
+
+    .msg-meta {
+      font-size: 11px;
+      color: var(--joule-text-3);
+      margin-bottom: 4px;
+      font-weight: 500;
+      padding: 0 4px;
+    }
+
+    .bubble {
+      max-width: 640px;
+      padding: 13px 18px;
+      border-radius: 16px;
+      font-size: 14px;
+      line-height: 1.6;
+      word-break: break-word;
+    }
+    .msg.user .bubble {
+      background: var(--joule-user-msg);
+      color: #ffffff;
+      border: none;
+      border-bottom-right-radius: 4px;
+    }
+    .msg.agent .bubble {
+      background: var(--joule-surface);
+      color: var(--joule-text-1);
+      border: 1px solid var(--joule-border-2);
+      border-bottom-left-radius: 4px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    }
+    .bubble strong { font-weight: 700; }
+    .bubble code {
+      background: rgba(107,64,240,.08);
+      color: var(--joule-brand);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'SFMono-Regular', Consolas, monospace;
+      font-size: 12px;
+    }
+    .msg.user .bubble code { background: rgba(255,255,255,.2); color: #fff; }
+
+    /* Typing dots */
+    .typing-dots {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 2px;
+    }
+    .dot {
+      width: 6px; height: 6px;
+      background: var(--joule-text-3);
+      border-radius: 50%;
+      animation: blink 1.2s infinite ease-in-out;
+    }    .dot:nth-child(2) { animation-delay: .2s; }
+    .dot:nth-child(3) { animation-delay: .4s; }
+    @keyframes blink {
+      0%, 60%, 100% { transform: scale(1); opacity: .6; }
+      30% { transform: scale(1.4); opacity: 1; }
+    }
+
+    /* ── Milestone card ─────────────────────────────────────────────── */
+    .milestone-card {
+      margin-top: 12px;
+      border: 1px solid var(--joule-border-2);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      background: var(--joule-surface);
+      max-width: 640px;
+    }
+    .milestone-card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px;
+      background: var(--joule-surface-2);
+      border-bottom: 1px solid var(--joule-border);
+    }
+    .milestone-card-head span {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--joule-text-2);
+      text-transform: uppercase;
+      letter-spacing: .4px;
+    }
+    .milestone-count-pill {
+      font-size: 11px;
+      font-weight: 700;
+      background: var(--joule-pill-bg);
+      color: var(--joule-brand);
+      padding: 2px 9px;
+      border-radius: 10px;
+      border: 1px solid rgba(107,64,240,.2);
+    }
+
+    .milestone-scroll { overflow-x: auto; }
+    .milestone-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      min-width: 480px;
+    }
+    .milestone-table thead th {
+      padding: 9px 14px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--joule-text-3);
+      text-transform: uppercase;
+      letter-spacing: .4px;
+      border-bottom: 1px solid var(--joule-border);
+      white-space: nowrap;
+      background: var(--joule-surface-2);
+    }
+    .milestone-table tbody td {
+      padding: 9px 14px;
+      border-bottom: 1px solid var(--joule-border);
+      color: var(--joule-text-1);
+      white-space: nowrap;
+    }
+    .milestone-table tbody tr:last-child td { border-bottom: none; }
+    .milestone-table tbody tr:hover td { background: var(--joule-brand-light); }
+    .milestone-table tbody tr.final td { background: var(--joule-orange-bg); }
+    .milestone-table tbody tr.final:hover td { background: #fde8cc; }
+
+    .type-tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 5px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .type-tag.faz { background: var(--joule-pill-bg); color: var(--joule-brand); }
+    .type-tag.f2  { background: var(--joule-orange-bg); color: var(--joule-orange); }
+
+    .milestone-actions {
+      display: flex;
+      gap: 10px;
+      padding: 12px 16px;
+      border-top: 1px solid var(--joule-border);
+      background: var(--joule-surface-2);
+    }
+    .act-btn {
+      padding: 9px 18px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      border: none;
+      transition: var(--transition);
+    }
+    .act-btn.primary {
+      background: var(--joule-green);
+      color: #fff;
+    }
+    .act-btn.primary:hover { background: #147a3e; box-shadow: 0 4px 16px rgba(26,138,74,.2); }
+    .act-btn.secondary {
+      background: transparent;
+      color: var(--joule-brand);
+      border: 1px solid rgba(107,64,240,.3);
+    }
+    .act-btn.secondary:hover { background: var(--joule-brand-light); border-color: var(--joule-brand); }
+    .act-btn:disabled { opacity: .4; cursor: not-allowed; pointer-events: none; }
+
+    .input-bar {
+      flex-shrink: 0;
+      padding: 16px max(24px, calc(50% - 360px));
+      border-top: 1px solid var(--joule-border);
+      background: var(--joule-surface);
+    }
+    .input-wrap {
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+      background: var(--joule-surface-2);
+      border: 1px solid var(--joule-border-2);
+      border-radius: 14px;
+      padding: 6px 8px 6px 16px;
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+    .input-wrap:focus-within {
+      border-color: rgba(107,64,240,.4);
+      box-shadow: 0 0 0 3px var(--joule-brand-glow);
+      background: var(--joule-surface);
+    }
+    .chat-textarea {
+      flex: 1;
+      background: transparent;
+      border: none;
+      resize: none;
+      font-family: inherit;
+      font-size: 14px;
+      color: var(--joule-text-1);
+      line-height: 1.5;
+      padding: 6px 0;
+      max-height: 120px;
+      overflow-y: auto;
+    }
+    .chat-textarea:focus { outline: none; }
+    .chat-textarea::placeholder { color: var(--joule-text-3); }
+    .send-btn {
+      width: 36px; height: 36px;
+      background: var(--joule-brand);
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 15px;
+      transition: var(--transition);
+    }
+    .send-btn:hover:not(:disabled) {
+      background: var(--joule-brand-hover);
+      box-shadow: 0 2px 12px var(--joule-brand-glow);
+    }
+    .send-btn:disabled { opacity: .35; cursor: not-allowed; }
+
+    /* ── Status line above input ────────────────────────────────────── */
+    .status-line {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      font-size: 12px;
+      color: var(--joule-text-3);
+      padding-bottom: 10px;
+    }
+    .status-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--joule-text-3);
+    }
+    .status-dot.active  { background: var(--joule-green); }
+    .status-dot.working { background: var(--joule-orange); animation: pulse-d 1s infinite; }
+    .status-dot.error   { background: var(--joule-red); }
+    @keyframes pulse-d { 0%,100% { opacity:1 } 50% { opacity:.3 } }
+
+    /* ── Toast ──────────────────────────────────────────────────────── */
+    #toasts {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+    .toast {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 18px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 600;
+      pointer-events: auto;
+      box-shadow: 0 4px 20px rgba(0,0,0,.12);
+      transform: translateX(110%);
+      opacity: 0;
+      transition: transform .3s cubic-bezier(.22,.68,0,1.2), opacity .25s;
+      max-width: 340px;
+    }
+    .toast.show { transform: translateX(0); opacity: 1; }
+    .toast.success { background: var(--joule-green-bg); border: 1px solid rgba(26,138,74,.25);  color: var(--joule-green); }
+    .toast.error   { background: var(--joule-red-bg);   border: 1px solid rgba(204,34,34,.25);  color: var(--joule-red); }
+    .toast.info    { background: var(--joule-brand-light); border: 1px solid rgba(107,64,240,.25); color: var(--joule-brand); }
+
+    /* scrollbar */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(0,0,0,.15); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,.25); }
+
+    /* ── SO suggestion dropdown ─────────────────────────────────────── */
+    .so-suggestion-wrapper { position: relative; }
+    .so-suggestions {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0; right: 0;
+      background: var(--joule-surface);
+      border: 1px solid var(--joule-border-2);
+      border-radius: var(--radius-sm);
+      box-shadow: 0 8px 32px rgba(0,0,0,.12);
+      z-index: 200;
+      display: none;
+      overflow: hidden;
+    }
+    .so-suggestions.open { display: block; }
+    .so-suggestion-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      cursor: pointer;
+      transition: background var(--transition);
+      border-bottom: 1px solid var(--joule-border);
+    }
+    .so-suggestion-item:last-child { border-bottom: none; }
+    .so-suggestion-item:hover { background: var(--joule-brand-light); }
+    .so-confidence-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .so-confidence-dot.high   { background: var(--joule-green); }
+    .so-confidence-dot.medium { background: var(--joule-orange); }
+    .so-confidence-dot.low    { background: var(--joule-red); }
+    .so-pill-id {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--joule-brand);
+      flex-shrink: 0;
+      min-width: 72px;
+    }
+    .so-pill-meta {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+    .so-pill-project {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--joule-text-1);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .so-pill-customer {
+      font-size: 11px;
+      color: var(--joule-text-3);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .so-suggestions-loading {
+      padding: 10px 14px;
+      font-size: 13px;
+      color: var(--joule-text-3);
+      text-align: center;
+    }
+
+    /* ── Analytics ──────────────────────────────────────────────────── */
+    .act-btn.analytics {
+      background: transparent;
+      color: var(--joule-brand);
+      border: 1px solid rgba(107,64,240,.3);
+    }
+    .act-btn.analytics:hover { background: var(--joule-brand-light); border-color: var(--joule-brand); }
+
+    .analytics-panel {
+      margin-top: 12px;
+      border: 1px solid var(--joule-border-2);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      background: var(--joule-surface);
+      max-width: 640px;
+    }
+    .analytics-panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px;
+      background: var(--joule-surface-2);
+      border-bottom: 1px solid var(--joule-border);
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--joule-text-2);
+      text-transform: uppercase;
+      letter-spacing: .4px;
+    }
+    .analytics-row {
+      display: grid;
+      grid-template-columns: 32px 1fr auto;
+      align-items: start;
+      gap: 10px;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--joule-border);
+      font-size: 13px;
+    }
+    .analytics-row:last-child { border-bottom: none; }
+    .analytics-num {
+      font-weight: 700;
+      color: var(--joule-text-3);
+      font-size: 12px;
+      padding-top: 2px;
+    }
+    .analytics-desc { color: var(--joule-text-1); }
+    .analytics-reason { font-size: 12px; color: var(--joule-text-2); margin-top: 2px; }
+    .analytics-summary {
+      padding: 10px 16px;
+      font-size: 13px;
+      color: var(--joule-text-2);
+      font-style: italic;
+      border-top: 1px solid var(--joule-border);
+      background: var(--joule-surface-2);
+    }
+    .risk-badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .risk-badge.low    { background: var(--joule-green-bg);  color: var(--joule-green); }
+    .risk-badge.medium { background: var(--joule-orange-bg); color: var(--joule-orange); }
+    .risk-badge.high   { background: var(--joule-red-bg);    color: var(--joule-red); }
+    .opt-row {
+      display: grid;
+      grid-template-columns: 32px 1fr;
+      gap: 10px;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--joule-border);
+      font-size: 13px;
+    }
+    .opt-row:last-child { border-bottom: none; }
+    .opt-details { display: flex; flex-direction: column; gap: 2px; }
+    .opt-main { color: var(--joule-text-1); font-weight: 600; }
+    .opt-change { font-size: 12px; color: var(--joule-brand); }
+    .opt-reason { font-size: 12px; color: var(--joule-text-2); }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ── Top bar ───────────────────────────────────────────────────────────── -->
+  <header class="topbar">
+    <a class="topbar-logo" href="#">
+      <span class="topbar-sap">SAP</span>
+      <span class="topbar-name">Billing Milestone Agent</span>
+    </a>
+    <div class="topbar-spacer"></div>
+    <span class="topbar-badge" id="topbarBadge">Powered by Gemini 2.5 Pro</span>
+    <button class="topbar-reset" id="resetBtn" onclick="resetSession()" style="display:none">
+      &#8635; New session
+    </button>
+  </header>
+
+  <div class="body">
+
+    <!-- ── Welcome / Upload screen ─────────────────────────────────────────── -->
+    <div id="welcomeScreen">
+      <div class="welcome-icon">📋</div>
+      <h1 class="welcome-title">Billing Milestone Agent</h1>
+      <p class="welcome-sub">
+        Drop your sales contract and enter a Sales Order ID.<br>
+        The agent extracts all billing milestones and creates them in SAP S/4HANA.
+      </p>
+
+      <div class="upload-card">
+
+        <!-- Drop zone -->
+        <div>
+          <div id="dropZone" class="drop-zone"
+               onclick="document.getElementById('fileInput').click()">
+            <div class="drop-icon">☁</div>
+            <div class="drop-text">
+              Drop files here or <span class="drop-link">browse</span>
+            </div>
+            <div class="drop-hint">PDF, DOCX, TXT · Up to 50 MB per file</div>
+          </div>
+          <input id="fileInput" type="file" multiple accept=".pdf,.txt,.docx,.doc,.xlsx,.xls">
+        </div>
+
+        <!-- File list -->
+        <div id="fileChips" class="file-chips" style="display:none"></div>
+
+        <!-- Sales Order -->
+        <div>
+          <div class="field-label">Sales Order ID</div>
+          <div class="so-suggestion-wrapper">
+            <input id="salesOrderInput" class="field-input" type="text"
+                   placeholder="e.g. 40168456" autocomplete="off" spellcheck="false"
+                   oninput="onSoInput()">
+            <div id="soSuggestions" class="so-suggestions"></div>
+          </div>
+        </div>
+
+        <!-- Submit -->
+        <button id="submitBtn" class="btn-primary" onclick="submitDocuments()">
+          Analyze Contract
+        </button>
+
+      </div>
+    </div><!-- /welcomeScreen -->
+
+    <!-- ── Chat screen ─────────────────────────────────────────────────────── -->
+    <div id="chatScreen">
+
+      <div class="messages" id="messages"></div>
+
+      <div class="input-bar">
+        <div class="status-line">
+          <div class="status-dot" id="statusDot"></div>
+          <span id="statusText">Start a conversation</span>
+        </div>
+        <div class="input-wrap">
+          <textarea id="chatInput" class="chat-textarea" rows="1"
+            placeholder="Ask a follow-up or request a correction…"
+            onkeydown="handleKey(event)"
+            oninput="autoResize(this)"></textarea>
+          <button id="sendBtn" class="send-btn" onclick="sendMsg()" disabled>&#9654;</button>
+        </div>
+      </div>
+
+    </div><!-- /chatScreen -->
+
+  </div><!-- /body -->
+</div><!-- /app -->
+
+<div id="toasts"></div>
+
+<script>
+const API_BASE = '';
+let sessionId = null;
+let isWorking = false;
+let selectedFiles = [];
+let soSuggestionsData = [];
+let soSuggestDebounce = null;
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  // Always start fresh on page load — the server session is gone anyway
+  localStorage.removeItem('bmca_session');
+  setupDrop();
+  // Close suggestion dropdown when clicking outside
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.so-suggestion-wrapper')) closeSoSuggestions();
+  });
+});
+
+// ── Screen switching ──────────────────────────────────────────────────────────
+function showChatScreen() {
+  document.getElementById('welcomeScreen').style.display = 'none';
+  document.getElementById('chatScreen').classList.add('active');
+  document.getElementById('resetBtn').style.display = '';
+  document.getElementById('chatInput').focus();
+}
+
+function showWelcomeScreen() {
+  document.getElementById('welcomeScreen').style.display = '';
+  document.getElementById('chatScreen').classList.remove('active');
+  document.getElementById('resetBtn').style.display = 'none';
+}
+
+function resetSession() {
+  sessionId = null;
+  selectedFiles = [];
+  soSuggestionsData = [];
+  localStorage.removeItem('bmca_session');
+  document.getElementById('salesOrderInput').value = '';
+  document.getElementById('messages').innerHTML = '';
+  renderChips();
+  closeSoSuggestions();
+  document.getElementById('sendBtn').disabled = true;
+  setStatus('', 'Start a conversation');
+  showWelcomeScreen();
+}
+
+// ── Drop zone ─────────────────────────────────────────────────────────────────
+function setupDrop() {
+  const zone = document.getElementById('dropZone');
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('drag-over');
+    addFiles([...e.dataTransfer.files]);
+  });
+  document.getElementById('fileInput').addEventListener('change', e => {
+    addFiles([...e.target.files]);
+    e.target.value = '';
+  });
+}
+
+function addFiles(files) {
+  for (const f of files) {
+    if (!selectedFiles.find(x => x.name === f.name && x.size === f.size)) selectedFiles.push(f);
+  }
+  renderChips();
+  if (selectedFiles.length > 0) {
+    fetchSoSuggestions(selectedFiles.map(f => f.name));
+  }
+}
+
+function removeFile(i) { selectedFiles.splice(i, 1); renderChips(); }
+
+function renderChips() {
+  const el = document.getElementById('fileChips');
+  if (!selectedFiles.length) { el.style.display = 'none'; return; }
+  el.style.display = 'flex';
+  el.innerHTML = selectedFiles.map((f, i) => `
+    <div class="file-chip">
+      <span class="file-chip-icon">${/\.pdf$/i.test(f.name) ? '📕' : '📄'}</span>
+      <span class="file-chip-name" title="${esc(f.name)}">${esc(f.name)}</span>
+      <span class="file-chip-size">${bytes(f.size)}</span>
+      <span class="file-chip-del" onclick="removeFile(${i})">&#x2715;</span>
+    </div>`).join('');
+}
+
+function bytes(n) {
+  if (n < 1024) return n + ' B';
+  if (n < 1048576) return (n/1024).toFixed(1) + ' KB';
+  return (n/1048576).toFixed(1) + ' MB';
+}
+
+// ── SO suggestion ─────────────────────────────────────────────────────────────
+function onSoInput() {
+  // If user is manually typing, close AI suggestions
+  closeSoSuggestions();
+}
+
+async function fetchSoSuggestions(fileNames) {
+  const dropdown = document.getElementById('soSuggestions');
+  dropdown.innerHTML = '<div class="so-suggestions-loading">Matching sales orders…</div>';
+  dropdown.classList.add('open');
+
+  try {
+    const res  = await fetch('/api/suggestSalesOrder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fileNames })
+    });
+    const data = await res.json();
+    soSuggestionsData = data.suggestions || [];
+    renderSoSuggestions();
+  } catch (err) {
+    closeSoSuggestions();
+  }
+}
+
+function renderSoSuggestions() {
+  const dropdown = document.getElementById('soSuggestions');
+  if (!soSuggestionsData.length) {
+    closeSoSuggestions();
+    return;
+  }
+  dropdown.innerHTML = soSuggestionsData.map((s, i) => `
+    <div class="so-suggestion-item" onclick="pickSoSuggestion(${i})">
+      <div class="so-confidence-dot ${esc(s.confidence || 'low')}"></div>
+      <div class="so-pill-id">${esc(s.salesOrderId)}</div>
+      <div class="so-pill-meta">
+        <div class="so-pill-project">${esc(s.projectName || '')}</div>
+        <div class="so-pill-customer">${esc(s.customerName || '')}</div>
+      </div>
+    </div>`).join('');
+  dropdown.classList.add('open');
+}
+
+function pickSoSuggestion(i) {
+  const s = soSuggestionsData[i];
+  if (!s) return;
+  document.getElementById('salesOrderInput').value = s.salesOrderId;
+  closeSoSuggestions();
+}
+
+function closeSoSuggestions() {
+  const dropdown = document.getElementById('soSuggestions');
+  if (dropdown) dropdown.classList.remove('open');
+}
+
+// ── Submit ────────────────────────────────────────────────────────────────────
+async function submitDocuments() {
+  const so = document.getElementById('salesOrderInput').value.trim();
+  if (!so)                   { toast('Please enter a Sales Order ID.', 'error'); return; }
+  if (!selectedFiles.length) { toast('Please upload at least one document.', 'error'); return; }
+  if (isWorking) return;
+
+  closeSoSuggestions();
+  startWork();
+  showChatScreen();
+  setStatus('working', 'Uploading and analyzing…');
+  addMsg('user', `Analyzing ${selectedFiles.length} document(s) for Sales Order **${so}**:\n${selectedFiles.map(f=>f.name).join(', ')}`);
+  showTyping();
+
+  const fd = new FormData();
+  fd.append('salesOrderId', so);
+  for (const f of selectedFiles) fd.append('files', f);
+  const hdrs = {};
+  if (sessionId) hdrs['x-session-id'] = sessionId;
+
+  try {
+    const res  = await fetch('/upload', { method: 'POST', headers: hdrs, body: fd });
+    const data = await res.json();
+    removeTyping();
+    if (!res.ok) {
+      addMsg('agent', '**Error:** ' + (data.error || 'Upload failed.'));
+      setStatus('error', 'Upload failed');
+      stopWork();
+      return;
+    }
+    sessionId = data.sessionId;
+    localStorage.setItem('bmca_session', sessionId);
+    document.getElementById('sendBtn').disabled = false;
+    addMsg('agent', data.reply, data.milestones, data.status);
+    setStatus('active', `Sales Order ${so}`);
+    stopWork();
+  } catch (err) {
+    removeTyping();
+    addMsg('agent', '**Connection error:** ' + err.message);
+    setStatus('error', 'Connection error');
+    stopWork();
+  }
+}
+
+// ── Chat ──────────────────────────────────────────────────────────────────────
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+async function sendMsg() {
+  const inp = document.getElementById('chatInput');
+  const msg = inp.value.trim();
+  if (!msg || isWorking) return;
+  if (!sessionId) { toast('No active session. Upload documents first.', 'error'); return; }
+
+  startWork();
+  inp.value = ''; inp.style.height = 'auto';
+  addMsg('user', msg);
+  showTyping();
+
+  try {
+    const res      = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId, message: msg })
+    });
+    const envelope = await res.json();
+    removeTyping();
+    if (!res.ok) {
+      addMsg('agent', '**Error:** ' + (envelope.error?.message || envelope.message || 'Request failed.'));
+      stopWork(); return;
+    }
+    const data = envelope.value ?? envelope;
+    addMsg('agent', data.reply, data.milestones, data.status);
+    setStatus('active', data.status === 'milestones_proposed' ? 'Milestones ready for review' : 'Active');
+    stopWork();
+  } catch (err) {
+    removeTyping();
+    addMsg('agent', '**Connection error:** ' + err.message);
+    stopWork();
+  }
+}
+
+// ── Create in SAP ─────────────────────────────────────────────────────────────
+async function createInSAP() {
+  if (!sessionId || isWorking) return;
+  if (!confirm('Create these billing plan items in SAP S/4HANA?\nThis action cannot be undone.')) return;
+
+  startWork();
+  showTyping();
+
+  try {
+    const res      = await fetch('/api/createInSAP', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId })
+    });
+    const envelope = await res.json();
+    removeTyping();
+    if (!res.ok) {
+      addMsg('agent', '**SAP Error:** ' + (envelope.error?.message || 'Creation failed.'));
+      toast('Creation failed. See chat.', 'error');
+      stopWork(); return;
+    }
+    const data = envelope.value ?? envelope;
+    const so   = document.getElementById('salesOrderInput').value.trim() || 'UNKNOWN';
+    addMsg('agent',
+      `**Done!** ${data.message}\n\nBilling Plan: \`${data.billingPlan}\` · Items created: **${data.created}**\n\n` +
+      `View in mock S/4HANA: \`http://localhost:3001/view/${encodeURIComponent(so)}\``
+    );
+    toast(`${data.created} item(s) created in SAP S/4HANA.`, 'success');
+    setStatus('active', `Created — Billing Plan ${data.billingPlan}`);
+    stopWork();
+  } catch (err) {
+    removeTyping();
+    addMsg('agent', '**Connection error:** ' + err.message);
+    toast('Connection error.', 'error');
+    stopWork();
+  }
+}
+
+// ── Analytics ─────────────────────────────────────────────────────────────────
+async function showAnalytics(btn) {
+  if (!sessionId || isWorking) return;
+  btn.disabled = true;
+  btn.textContent = 'Analyzing…';
+
+  showTyping();
+
+  const [riskResult, optResult] = await Promise.allSettled([
+    callAnalytics('predictDelayRisk'),
+    callAnalytics('suggestOptimization'),
+  ]);
+
+  removeTyping();
+
+  const riskData = riskResult.status === 'fulfilled' ? riskResult.value : null;
+  const optData  = optResult.status  === 'fulfilled' ? optResult.value  : null;
+
+  if (!riskData && !optData) {
+    addMsg('agent', '**Analytics error:** Could not retrieve analytics. Please try again.');
+    btn.disabled = false;
+    btn.textContent = 'Analytics';
+    return;
+  }
+
+  const container = document.getElementById('messages');
+  const wrap = document.createElement('div');
+  wrap.className = 'msg agent';
+  wrap.innerHTML = '<div class="msg-meta">Billing Agent</div>';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  bubble.innerHTML = '<strong>Predictive Analytics</strong><br>Here is the risk assessment and optimization suggestion for the current billing plan.';
+
+  if (riskData) bubble.appendChild(buildRiskPanel(riskData));
+  if (optData)  bubble.appendChild(buildOptimizationPanel(optData));
+
+  wrap.appendChild(bubble);
+  container.appendChild(wrap);
+  wrap.scrollIntoView({ behavior: 'smooth', block: 'end' });
+
+  btn.disabled = false;
+  btn.textContent = 'Analytics';
+}
+
+async function callAnalytics(action) {
+  const res      = await fetch(`/api/${action}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sessionId })
+  });
+  const envelope = await res.json();
+  if (!res.ok) throw new Error(envelope.error?.message || 'Analytics request failed');
+  return envelope.value ?? envelope;
+}
+
+function buildRiskPanel(data) {
+  const panel = document.createElement('div');
+  panel.className = 'analytics-panel';
+  panel.innerHTML = `<div class="analytics-panel-head"><span>Payment Delay Risk</span></div>`;
+
+  const rows = (data.risks || []).map(r => `
+    <div class="analytics-row">
+      <div class="analytics-num">#${r.milestoneNumber}</div>
+      <div>
+        <div class="analytics-desc">${esc(r.description || '')}</div>
+        <div class="analytics-reason">${esc(r.reasoning || '')}</div>
+      </div>
+      <div><span class="risk-badge ${esc((r.riskLevel||'low').toLowerCase())}">${esc(r.riskLevel||'low')}</span></div>
+    </div>`).join('');
+
+  panel.innerHTML += rows;
+  if (data.summary) {
+    panel.innerHTML += `<div class="analytics-summary">${esc(data.summary)}</div>`;
+  }
+  return panel;
+}
+
+function buildOptimizationPanel(data) {
+  const panel = document.createElement('div');
+  panel.className = 'analytics-panel';
+  panel.innerHTML = `<div class="analytics-panel-head"><span>Billing Plan Optimization</span></div>`;
+
+  const rows = (data.suggestion || []).map(s => `
+    <div class="opt-row">
+      <div class="analytics-num">#${s.milestoneNumber}</div>
+      <div class="opt-details">
+        <div class="opt-main">${esc(s.suggestedDate||'—')} &nbsp;·&nbsp; ${Number(s.suggestedAmount||0).toLocaleString('de-DE',{minimumFractionDigits:2})} ${esc(s.description||'')}</div>
+        <div class="opt-change">${s.percentage > 0 ? s.percentage + '%' : 'Final invoice'}</div>
+        <div class="opt-reason">${esc(s.changeReason||'')}</div>
+      </div>
+    </div>`).join('');
+
+  panel.innerHTML += rows;
+  if (data.explanation) {
+    panel.innerHTML += `<div class="analytics-summary">${esc(data.explanation)}</div>`;
+  }
+  return panel;
+}
+
+// ── Working state ─────────────────────────────────────────────────────────────
+function startWork() {
+  isWorking = true;
+  const sd = document.getElementById('statusDot');
+  if (sd) sd.className = 'status-dot working';
+  document.getElementById('submitBtn').disabled = true;
+  document.getElementById('sendBtn').disabled   = true;
+}
+function stopWork() {
+  isWorking = false;
+  document.getElementById('submitBtn').disabled = false;
+  document.getElementById('sendBtn').disabled   = !sessionId;
+}
+
+// ── Status ────────────────────────────────────────────────────────────────────
+function setStatus(type, text) {
+  const dot  = document.getElementById('statusDot');
+  const span = document.getElementById('statusText');
+  if (dot)  dot.className  = 'status-dot' + (type ? ' ' + type : '');
+  if (span) span.textContent = text;
+}
+
+// ── Message rendering ─────────────────────────────────────────────────────────
+function addMsg(sender, text, milestones, status) {
+  const container = document.getElementById('messages');
+  const wrap = document.createElement('div');
+  wrap.className = 'msg ' + sender;
+
+  const meta = document.createElement('div');
+  meta.className = 'msg-meta';
+  meta.textContent = sender === 'agent' ? 'Billing Agent' : 'You';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  if (text) bubble.innerHTML = md(text);
+
+  if (milestones && milestones.length > 0) {
+    bubble.appendChild(buildMilestoneCard(milestones, status));
+  }
+
+  wrap.appendChild(meta);
+  wrap.appendChild(bubble);
+  container.appendChild(wrap);
+  wrap.scrollIntoView({ behavior: 'smooth', block: 'end' });
+}
+
+function md(t) {
+  return t
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
+    .replace(/`([^`]+)`/g,'<code>$1</code>')
+    .replace(/\n/g,'<br>');
+}
+
+function esc(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function buildMilestoneCard(milestones, status) {
+  const card = document.createElement('div');
+  card.className = 'milestone-card';
+
+  card.innerHTML = `
+    <div class="milestone-card-head">
+      <span>Proposed Billing Milestones</span>
+      <span class="milestone-count-pill">${milestones.length} item${milestones.length!==1?'s':''}</span>
+    </div>
+    <div class="milestone-scroll">
+      <table class="milestone-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Billing Date</th>
+            <th style="text-align:right">Amount</th>
+            <th style="text-align:right">%</th>
+            <th>Currency</th>
+            <th>Type</th>
+          </tr>
+        </thead>
+        <tbody id="milestone-tbody-${Date.now()}"></tbody>
+      </table>
+    </div>`;
+
+  const tbody = card.querySelector('tbody');
+  milestones.forEach((m, i) => {
+    const isFinal = i === milestones.length - 1;
+    const tr = document.createElement('tr');
+    if (isFinal) tr.className = 'final';
+    tr.innerHTML = `
+      <td><strong>${m.milestoneNumber}</strong></td>
+      <td>${esc(m.billingDate||'—')}</td>
+      <td style="text-align:right;font-variant-numeric:tabular-nums">${Number(m.amount||0).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+      <td style="text-align:right">${isFinal ? '—' : Number(m.percentage||0).toFixed(2)+'%'}</td>
+      <td>${esc(m.currency||'—')}</td>
+      <td><span class="type-tag ${isFinal?'f2':'faz'}">${isFinal?'F2':'FAZ'}</span></td>`;
+    tbody.appendChild(tr);
+  });
+
+  if (status === 'milestones_proposed') {
+    const actions = document.createElement('div');
+    actions.className = 'milestone-actions';
+    actions.innerHTML = `
+      <button class="act-btn primary" onclick="createInSAP()">Create in SAP S/4HANA</button>
+      <button class="act-btn secondary" onclick="document.getElementById('chatInput').focus()">Request Corrections</button>
+      <button class="act-btn analytics" onclick="showAnalytics(this)">Analytics</button>`;
+    card.appendChild(actions);
+  }
+
+  return card;
+}
+
+// ── Typing indicator ──────────────────────────────────────────────────────────
+function showTyping() {
+  const container = document.getElementById('messages');
+  const wrap = document.createElement('div');
+  wrap.className = 'msg agent';
+  wrap.id = 'typingMsg';
+  wrap.innerHTML = `
+    <div class="msg-meta">Billing Agent</div>
+    <div class="bubble">
+      <div class="typing-dots">
+        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+      </div>
+    </div>`;
+  container.appendChild(wrap);
+  wrap.scrollIntoView({ behavior: 'smooth', block: 'end' });
+}
+function removeTyping() {
+  const el = document.getElementById('typingMsg');
+  if (el) el.remove();
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function toast(msg, type='info') {
+  const icons = { success: '✓', error: '✕', info: 'ℹ' };
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.textContent = (icons[type]||'ℹ') + '  ' + msg;
+  document.getElementById('toasts').appendChild(el);
+  requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('show')));
+  setTimeout(() => {
+    el.classList.remove('show');
+    setTimeout(() => el.remove(), 350);
+  }, 4500);
+}
+</script>
+</body>
+</html>
