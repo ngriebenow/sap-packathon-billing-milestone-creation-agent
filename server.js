@@ -104,8 +104,14 @@ cds.on('bootstrap', (app) => {
       let status = 'chatting';
 
       if (llmResult.type === 'tool_call' && llmResult.toolName === 'propose_milestones') {
-        milestones = llmResult.toolInput.milestones;
+        const rawMs = llmResult.toolInput.milestones;
+        milestones = rawMs.map(m => ({ ...m, billingDocumentType: 'FAZ' }));
         session.milestones = milestones;
+        session.target = {
+          amount:     Number(llmResult.toolInput.totalAmount || 0),
+          currency:   llmResult.toolInput.currency || (rawMs[0]?.currency ?? 'EUR'),
+          percentage: 100,
+        };
         status = 'milestones_proposed';
 
         const conf     = llmResult.toolInput.confidence;
@@ -127,7 +133,7 @@ cds.on('bootstrap', (app) => {
       session.status = status;
       sessionStore.set(sid, session);
 
-      res.json({ sessionId: sid, reply, milestones, status });
+      res.json({ sessionId: sid, reply, milestones, target: session.target || null, status });
     } catch (err) {
       console.error('[Upload] Error:', err);
       res.status(500).json({ error: err.message });
@@ -173,15 +179,16 @@ cds.on('bootstrap', (app) => {
     const sid = uuidv4();
 
     const milestones = [
-      { milestoneNumber: 1, billingDate: '2026-03-01', amount: 87500,  percentage: 25,  currency: 'EUR', description: 'Down payment',                       billingDocumentType: 'FAZ' },
-      { milestoneNumber: 2, billingDate: '2026-06-15', amount: 105000, percentage: 30,  currency: 'EUR', description: 'Design approval & engineering freeze', billingDocumentType: 'FAZ' },
-      { milestoneNumber: 3, billingDate: '2026-09-30', amount: 87500,  percentage: 25,  currency: 'EUR', description: 'Factory acceptance test (FAT)',        billingDocumentType: 'FAZ' },
-      { milestoneNumber: 4, billingDate: '2027-01-15', amount: 350000, percentage: 100, currency: 'EUR', description: 'Final commissioning & handover',       billingDocumentType: 'F2'  },
+      { milestoneNumber: 1, billingDate: '2026-03-01', amount: 87500,  percentage: 25, currency: 'EUR', description: 'Down payment',                       billingDocumentType: 'FAZ' },
+      { milestoneNumber: 2, billingDate: '2026-06-15', amount: 105000, percentage: 30, currency: 'EUR', description: 'Design approval & engineering freeze', billingDocumentType: 'FAZ' },
+      { milestoneNumber: 3, billingDate: '2026-09-30', amount: 87500,  percentage: 25, currency: 'EUR', description: 'Factory acceptance test (FAT)',        billingDocumentType: 'FAZ' },
     ];
+    const target = { amount: 350000, currency: 'EUR', percentage: 100 };
 
     const session = {
       salesOrderId: 'DEV-M80550',
       milestones,
+      target,
       status: 'milestones_proposed',
       conversationHistory: [
         { role: 'user',      content: '[dev mock session]' },
@@ -190,13 +197,14 @@ cds.on('bootstrap', (app) => {
     };
     sessionStore.set(sid, session);
 
-    console.log(`[DevMock] Session ${sid} seeded with ${milestones.length} milestones`);
+    console.log(`[DevMock] Session ${sid} seeded with ${milestones.length} milestones + target`);
     res.json({
       sessionId:   sid,
       salesOrderId: session.salesOrderId,
       milestones,
+      target,
       status:      'milestones_proposed',
-      reply:       `**[Dev Mock]** Loaded ${milestones.length} hardcoded milestones for Sales Order DEV-M80550. Total: EUR 630,000.00. Click **Analytics** to test the chart, or edit cells directly.`,
+      reply:       `**[Dev Mock]** Loaded ${milestones.length} hardcoded FAZ milestones for Sales Order DEV-M80550. Contract total: EUR 350,000.00. Click **Analytics** to test the chart, or edit cells directly.`,
     });
   });
 });

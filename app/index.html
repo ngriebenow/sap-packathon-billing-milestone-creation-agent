@@ -452,6 +452,8 @@
     .milestone-table tbody tr:hover td { background: var(--joule-brand-light); }
     .milestone-table tbody tr.final td { background: var(--joule-orange-bg); }
     .milestone-table tbody tr.final:hover td { background: #fde8cc; }
+    .milestone-table tbody tr.target-row td { background: #fff8e1; color: #7a5c00; font-style: italic; }
+    .milestone-table tbody tr.target-row:hover td { background: #fff3cd; }
 
     /* ── Editable cells ─────────────────────────────────────────────── */
     .cell-editable { cursor: text; position: relative; }
@@ -489,8 +491,8 @@
       font-size: 11px;
       font-weight: 700;
     }
-    .type-tag.faz { background: var(--joule-pill-bg); color: var(--joule-brand); }
-    .type-tag.f2  { background: var(--joule-orange-bg); color: var(--joule-orange); }
+    .type-tag.faz    { background: var(--joule-pill-bg); color: var(--joule-brand); }
+    .type-tag.f2     { background: var(--joule-orange-bg); color: var(--joule-orange); }
 
     .milestone-actions {
       display: flex;
@@ -937,6 +939,7 @@ let selectedFiles = [];
 let soSuggestionsData = [];
 let soSuggestDebounce = null;
 let latestMilestones = [];
+let latestTarget = null;
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
 window.addEventListener('load', () => {
@@ -972,7 +975,7 @@ async function activateMockSession() {
     sessionId = env.sessionId;
     showChatScreen();
     setStatus('active', `[DEV] Mock session — Sales Order ${env.salesOrderId}`);
-    addMsg('agent', env.reply, env.milestones, 'milestones_proposed');
+    addMsg('agent', env.reply, env.milestones, 'milestones_proposed', env.target);
     document.getElementById('sendBtn').disabled = false;
   } catch (e) {
     console.error('[mockSession]', e);
@@ -1134,7 +1137,7 @@ async function submitDocuments() {
     sessionId = data.sessionId;
     localStorage.setItem('bmca_session', sessionId);
     document.getElementById('sendBtn').disabled = false;
-    addMsg('agent', data.reply, data.milestones, data.status);
+    addMsg('agent', data.reply, data.milestones, data.status, data.target);
     setStatus('active', `Sales Order ${so}`);
     stopWork();
   } catch (err) {
@@ -1179,8 +1182,30 @@ async function sendMsg() {
       stopWork(); return;
     }
     const data = envelope.value ?? envelope;
-    addMsg('agent', data.reply, data.milestones, data.status);
+    addMsg('agent', data.reply, data.milestones, data.status, data.target);
     setStatus('active', data.status === 'milestones_proposed' ? 'Milestones ready for review' : 'Active');
+
+    // If the response also contains an optimized plan, render it inline
+    if (data.suggestion && data.suggestion.length > 0) {
+      if (data.target) latestTarget = data.target;
+      const container = document.getElementById('messages');
+      const wrap = document.createElement('div');
+      wrap.className = 'msg agent';
+      wrap.innerHTML = '<div class="msg-meta">Billing Agent</div>';
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      const { panel, chartCanvas, chartCurrent, chartOptimised } = buildOptimizationPanel(data, latestMilestones);
+      bubble.appendChild(panel);
+      wrap.appendChild(bubble);
+      container.appendChild(wrap);
+      if (chartCanvas) {
+        chartCanvas.width  = chartCanvas.parentElement.clientWidth - 32;
+        chartCanvas.height = 260;
+        drawCashflowChart(chartCanvas, chartCurrent, chartOptimised, data.financialSavings, latestTarget);
+      }
+      wrap.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+
     stopWork();
   } catch (err) {
     removeTyping();
@@ -1267,9 +1292,10 @@ async function showAnalytics(btn) {
   if (riskData) bubble.appendChild(buildRiskPanel(riskData));
   let pendingChart = null;
   if (optData)  {
+    if (optData.target) latestTarget = optData.target;
     const { panel, chartCanvas, chartCurrent, chartOptimised } = buildOptimizationPanel(optData, latestMilestones);
     bubble.appendChild(panel);
-    if (chartCanvas) pendingChart = { canvas: chartCanvas, current: chartCurrent, optimised: chartOptimised, savings: optData.financialSavings };
+    if (chartCanvas) pendingChart = { canvas: chartCanvas, current: chartCurrent, optimised: chartOptimised, savings: optData.financialSavings, target: latestTarget };
   }
 
   wrap.appendChild(bubble);
@@ -1277,10 +1303,10 @@ async function showAnalytics(btn) {
 
   // Draw chart now — element is live in the DOM so clientWidth is available
   if (pendingChart) {
-    const { canvas, current, optimised, savings } = pendingChart;
+    const { canvas, current, optimised, savings, target } = pendingChart;
     canvas.width  = canvas.parentElement.clientWidth - 32;
     canvas.height = 260;
-    drawCashflowChart(canvas, current, optimised, savings);
+    drawCashflowChart(canvas, current, optimised, savings, target);
   }
 
   wrap.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -1371,7 +1397,7 @@ function buildOptimizationPanel(data, currentMilestones) {
       <div class="analytics-num">#${s.milestoneNumber}</div>
       <div class="opt-details">
         <div class="opt-main">${esc(s.suggestedDate||'—')} &nbsp;·&nbsp; ${Number(s.suggestedAmount||0).toLocaleString('de-DE',{minimumFractionDigits:2})} ${esc(s.description||'')}</div>
-        <div class="opt-change">${s.percentage > 0 ? s.percentage + '%' : 'Final invoice'}</div>
+        <div class="opt-change">${s.billingDocumentType === 'F2' ? '100%' : 'Advance payment'}</div>
         <div class="opt-reason">${esc(s.changeReason||'')}</div>
       </div>
     </div>`).join('');
@@ -1387,7 +1413,7 @@ function buildOptimizationPanel(data, currentMilestones) {
   return { panel, chartCanvas, chartCurrent: currentMilestones, chartOptimised: suggestion };
 }
 
-function drawCashflowChart(canvas, current, optimised, financialSavings) {
+function drawCashflowChart(canvas, current, optimised, financialSavings, target) {
   const W = canvas.width;
   const H = canvas.height;
   if (!W || !H) return;
@@ -1402,7 +1428,7 @@ function drawCashflowChart(canvas, current, optimised, financialSavings) {
 
   function parseSeries(items, dateKey, amountKey) {
     return items
-      .map(m => ({ date: new Date(m[dateKey] || m.billingDate), amount: Number(m[amountKey] || m.amount || 0) }))
+      .map(m => ({ date: new Date(m[dateKey] || m.billingDate), amount: Number(m[amountKey] || 0) }))
       .filter(p => !isNaN(p.date.getTime()) && p.amount > 0)
       .sort((a, b) => a.date - b.date);
   }
@@ -1422,7 +1448,9 @@ function drawCashflowChart(canvas, current, optimised, financialSavings) {
 
   const minDate = new Date(Math.min(...allPoints.map(p => p.date)));
   const maxDate = new Date(Math.max(...allPoints.map(p => p.date)));
-  const maxCum  = Math.max(...allPoints.map(p => p.cum));
+  const maxCum  = (target && target.amount > 0)
+    ? target.amount
+    : Math.max(...allPoints.map(p => p.cum));
 
   // Pad date range by one month each side so lines don't touch the axes
   const pad1m = 30 * 86400000;
@@ -1489,55 +1517,57 @@ function drawCashflowChart(canvas, current, optimised, financialSavings) {
     ctx.fillText(label, PAD.left - 6, y);
   }
 
-  // ── Catmull-Rom spline ────────────────────────────────────────────────────
-  // Passes smoothly through every point, no artificial anchors that cause kinks.
-  // Returns the pixel-space points so the fill and label passes can reuse them.
-  function catmullRomPath(cumSeries) {
-    if (cumSeries.length === 0) return [];
-    const pts = cumSeries.map(p => ({ x: xOf(p.date.getTime()), y: yOf(p.cum) }));
-    return pts;
-  }
+  // ── Monotone cubic spline (Fritsch-Carlson) ───────────────────────────────
+  // Guarantees the curve never moves backwards on the x-axis.
+  function buildMonotoneSubpath(ctx, pts) {
+    const n = pts.length;
+    if (n === 0) return;
+    if (n === 1) { ctx.moveTo(pts[0].x, pts[0].y); return; }
 
-  function buildCatmullRomSubpath(ctx, pts) {
-    const p = [pts[0], ...pts, pts[pts.length - 1]];
-    const n = p.length;
-    ctx.moveTo(p[1].x, p[1].y);
-    for (let i = 1; i < n - 2; i++) {
-      const tx1 = (p[i + 1].x - p[i - 1].x) / 2;
-      const ty1 = (p[i + 1].y - p[i - 1].y) / 2;
-      const tx2 = (p[i + 2].x - p[i].x)     / 2;
-      const ty2 = (p[i + 2].y - p[i].y)     / 2;
-      ctx.bezierCurveTo(
-        p[i].x     + tx1 / 3, p[i].y     + ty1 / 3,
-        p[i + 1].x - tx2 / 3, p[i + 1].y - ty2 / 3,
-        p[i + 1].x, p[i + 1].y
-      );
+    // Compute slopes between consecutive points
+    const dx = [], dy = [], m = [];
+    for (let i = 0; i < n - 1; i++) {
+      dx[i] = pts[i + 1].x - pts[i].x;
+      dy[i] = pts[i + 1].y - pts[i].y;
+      m[i]  = dx[i] === 0 ? 0 : dy[i] / dx[i];
+    }
+
+    // Initialise tangents at each point
+    const t = new Array(n);
+    t[0]     = m[0];
+    t[n - 1] = m[n - 2];
+    for (let i = 1; i < n - 1; i++) t[i] = (m[i - 1] + m[i]) / 2;
+
+    // Fritsch-Carlson monotonicity correction
+    for (let i = 0; i < n - 1; i++) {
+      if (m[i] === 0) { t[i] = t[i + 1] = 0; continue; }
+      const a = t[i]     / m[i];
+      const b = t[i + 1] / m[i];
+      if (a < 0 || b < 0) { t[i] = t[i + 1] = 0; continue; }
+      const h = Math.sqrt(a * a + b * b);
+      if (h > 3) { t[i] *= 3 / h; t[i + 1] *= 3 / h; }
+    }
+
+    // Emit bezier curves
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 0; i < n - 1; i++) {
+      const cp1x = pts[i].x     + dx[i] / 3;
+      const cp1y = pts[i].y     + t[i]     * dx[i] / 3;
+      const cp2x = pts[i + 1].x - dx[i] / 3;
+      const cp2y = pts[i + 1].y - t[i + 1] * dx[i] / 3;
+      ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, pts[i + 1].x, pts[i + 1].y);
     }
   }
 
-  const ptsCurrent = catmullRomPath(cumCurrent);
-  const ptsOpt     = catmullRomPath(cumOpt);
+  const ptsCurrent = cumCurrent.map(p => ({ x: xOf(p.date.getTime()), y: yOf(p.cum) }));
+  const ptsOpt     = cumOpt.map(p => ({ x: xOf(p.date.getTime()), y: yOf(p.cum) }));
 
   // ── Fill area between curves ──────────────────────────────────────────────
   if (ptsCurrent.length > 0 && ptsOpt.length > 0) {
     ctx.save();
     ctx.beginPath();
-    buildCatmullRomSubpath(ctx, ptsCurrent);          // forward along current
-    // reverse along optimised
-    const pRev = [ptsOpt[ptsOpt.length - 1], ...ptsOpt.slice().reverse(), ptsOpt[0]];
-    const pRevN = pRev.length;
-    ctx.lineTo(pRev[1].x, pRev[1].y);
-    for (let i = 1; i < pRevN - 2; i++) {
-      const tx1 = (pRev[i + 1].x - pRev[i - 1].x) / 2;
-      const ty1 = (pRev[i + 1].y - pRev[i - 1].y) / 2;
-      const tx2 = (pRev[i + 2].x - pRev[i].x)     / 2;
-      const ty2 = (pRev[i + 2].y - pRev[i].y)     / 2;
-      ctx.bezierCurveTo(
-        pRev[i].x     + tx1 / 3, pRev[i].y     + ty1 / 3,
-        pRev[i + 1].x - tx2 / 3, pRev[i + 1].y - ty2 / 3,
-        pRev[i + 1].x, pRev[i + 1].y
-      );
-    }
+    buildMonotoneSubpath(ctx, ptsCurrent);
+    buildMonotoneSubpath(ctx, ptsOpt.slice().reverse());
     ctx.closePath();
     ctx.fillStyle = 'rgba(107, 64, 240, 0.08)';
     ctx.fill();
@@ -1580,14 +1610,14 @@ function drawCashflowChart(canvas, current, optimised, financialSavings) {
     }
   }
 
-  function drawCatmullRom(cumSeries, pts, color) {
+  function drawMonotoneLine(cumSeries, pts, color) {
     if (pts.length === 0) return;
 
     ctx.strokeStyle = color;
     ctx.lineWidth   = 2.5;
     ctx.setLineDash([]);
     ctx.beginPath();
-    buildCatmullRomSubpath(ctx, pts);
+    buildMonotoneSubpath(ctx, pts);
     ctx.stroke();
 
     // Dots
@@ -1637,8 +1667,8 @@ function drawCashflowChart(canvas, current, optimised, financialSavings) {
     ctx.restore();
   }
 
-  drawCatmullRom(cumCurrent, ptsCurrent, COLOR_CURRENT);
-  drawCatmullRom(cumOpt,     ptsOpt,     COLOR_OPT);
+  drawMonotoneLine(cumCurrent, ptsCurrent, COLOR_CURRENT);
+  drawMonotoneLine(cumOpt,     ptsOpt,     COLOR_OPT);
 
   // ── Axes ──────────────────────────────────────────────────────────────────
   ctx.strokeStyle = '#c8c8c8';
@@ -1673,7 +1703,7 @@ function setStatus(type, text) {
 }
 
 // ── Message rendering ─────────────────────────────────────────────────────────
-function addMsg(sender, text, milestones, status) {
+function addMsg(sender, text, milestones, status, target) {
   const container = document.getElementById('messages');
   const wrap = document.createElement('div');
   wrap.className = 'msg ' + sender;
@@ -1688,7 +1718,8 @@ function addMsg(sender, text, milestones, status) {
 
   if (milestones && milestones.length > 0) {
     latestMilestones = milestones;
-    bubble.appendChild(buildMilestoneCard(milestones, status));
+    if (target) latestTarget = target;
+    bubble.appendChild(buildMilestoneCard(milestones, status, latestTarget));
   }
 
   wrap.appendChild(meta);
@@ -1709,7 +1740,7 @@ function esc(s) {
   return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-function buildMilestoneCard(milestones, status) {
+function buildMilestoneCard(milestones, status, target) {
   const card = document.createElement('div');
   card.className = 'milestone-card';
 
@@ -1728,6 +1759,7 @@ function buildMilestoneCard(milestones, status) {
             <th style="text-align:right">%</th>
             <th>Currency</th>
             <th>Type</th>
+            <th>Date Cat.</th>
             <th>Description</th>
           </tr>
         </thead>
@@ -1736,10 +1768,9 @@ function buildMilestoneCard(milestones, status) {
     </div>`;
 
   const tbody = card.querySelector('tbody');
-  milestones.forEach((m, i) => {
-    const isFinal = i === milestones.length - 1;
+  const displayMs = (target && target.amount > 0) ? milestones.slice(0, -1) : milestones;
+  displayMs.forEach((m) => {
     const tr = document.createElement('tr');
-    if (isFinal) tr.className = 'final';
 
     // # (static)
     const tdNum = document.createElement('td');
@@ -1773,12 +1804,17 @@ function buildMilestoneCard(milestones, status) {
     tr.appendChild(tdCur);
 
     // Type (dropdown)
-    const currentType = m.billingDocumentType || (isFinal ? 'F2' : 'FAZ');
+    const currentType = m.billingDocumentType || 'FAZ';
     m.billingDocumentType = m.billingDocumentType || currentType;
     const tdType = document.createElement('td');
     tdType.style.cursor = 'pointer';
     makeTypeEditable(tdType, m);
     tr.appendChild(tdType);
+
+    // Date Category (static, always 03 for FAZ)
+    const tdDatCat = document.createElement('td');
+    tdDatCat.textContent = '03';
+    tr.appendChild(tdDatCat);
 
     // Description (editable always)
     const tdDesc = document.createElement('td');
@@ -1789,14 +1825,32 @@ function buildMilestoneCard(milestones, status) {
     tbody.appendChild(tr);
   });
 
-  if (status === 'milestones_proposed') {
-    const actions = document.createElement('div');
-    actions.className = 'milestone-actions';
-    actions.innerHTML = `
-      <button class="act-btn primary" onclick="createInSAP()">Create in SAP S/4HANA</button>
-      <button class="act-btn analytics" onclick="showAnalytics(this)">Analytics</button>`;
-    card.appendChild(actions);
+  // F2 row — synthetic closing invoice derived from contract total
+  if (target && target.amount > 0) {
+    const lastMs   = milestones[milestones.length - 1];
+    const f2Number = displayMs.length + 1;
+    const f2Date   = lastMs?.billingDate || '—';
+    const fmtAmt   = Number(target.amount).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const tr = document.createElement('tr');
+    tr.className = 'target-row';
+    tr.innerHTML = `
+      <td><strong>${f2Number}</strong></td>
+      <td>${esc(f2Date)}</td>
+      <td style="text-align:right;font-variant-numeric:tabular-nums">${fmtAmt}</td>
+      <td style="text-align:right">100%</td>
+      <td>${esc(target.currency || 'EUR')}</td>
+      <td><span class="type-tag f2">F2</span></td>
+      <td>05</td>
+      <td>Final closing invoice</td>`;
+    tbody.appendChild(tr);
   }
+
+  const actions = document.createElement('div');
+  actions.className = 'milestone-actions';
+  actions.innerHTML = `
+    <button class="act-btn primary" onclick="createInSAP()">Create in SAP S/4HANA</button>
+    <button class="act-btn analytics" onclick="showAnalytics(this)">Analytics</button>`;
+  card.appendChild(actions);
 
   return card;
 }

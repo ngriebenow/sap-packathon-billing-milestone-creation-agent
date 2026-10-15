@@ -72,102 +72,110 @@ async function getHistoricalPlans(totalValue) {
 
 // ── Analytics prompt builders ─────────────────────────────────────────────────
 
-// SAP billing plans use percentage=100 on the final F2 invoice as a sentinel
-// meaning "invoice the remaining balance", NOT "this milestone is 100% of total".
-// We replace it with the true remainder percentage before sending to the model,
-// and strip the same sentinel from historical plan items so comparisons are fair.
-function normaliseMilestonesForAnalytics(milestones) {
-  const interim = milestones.filter(m => m.billingDocumentType !== 'F2');
-  const final   = milestones.find(m => m.billingDocumentType === 'F2');
-  const interimTotal = interim.reduce((s, m) => s + Number(m.amount || 0), 0);
-  const totalValue   = milestones.reduce((s, m) => s + Number(m.amount || 0), 0);
+// Derive analytics payload from milestones. contractTotal comes from session.target.amount.
+// All milestones are FAZ advance payments — no F2 sentinel.
+function analyticsPayload(milestones, contractTotal) {
+  const currency = milestones[0]?.currency || 'EUR';
+  const fazSum   = milestones.reduce((s, m) => s + Number(m.amount || 0), 0);
+  const payments = milestones.map(m => ({
+    id:          m.milestoneNumber,
+    date:        m.billingDate,
+    amount:      Number(m.amount || 0),
+    description: m.description || '',
+  }));
+  return { contractTotal, currency, fazSum, payments };
+}
 
-  return milestones.map(m => {
-    if (m.billingDocumentType !== 'F2') return m;
-    const remainderPct = totalValue > 0
-      ? Math.round(((totalValue - interimTotal) / totalValue) * 10000) / 100
-      : 0;
+function historicalPayments(plans) {
+  return plans.map(plan => {
+    const f2    = (plan.milestones || []).find(i => i.docType === 'F2');
+    const total = Number(plan.contractValue || (f2 && f2.amount) || 0);
+    const faz   = (plan.milestones || []).filter(i => i.docType !== 'F2');
     return {
-      ...m,
-      percentage: remainderPct,
-      _note: 'SAP final invoice (F2): percentage=100 in SAP is a "remaining balance" sentinel, replaced here with the true remainder percentage for analytical purposes.'
+      contractValue:   total,
+      currency:        plan.currency,
+      customerCountry: plan.customerCountry,
+      incoterms:       plan.incoterms,
+      paymentTerms:    plan.paymentTerms,
+      payments:        faz.map(i => ({
+        date:        i.billingDate || i._billingDateISO,
+        amount:      Number(i.amount || 0),
+        pctOfTotal:  total > 0 ? Math.round(Number(i.amount || 0) / total * 1000) / 10 : 0,
+      })),
     };
   });
 }
 
-function normaliseHistoricalItems(plans) {
-  return plans.map(plan => ({
-    ...plan,
-    milestones: (plan.milestones || []).map(item => {
-      if (item.docType !== 'F2' || Number(item.percentage) !== 100) return item;
-      const interimTotal = (plan.milestones || [])
-        .filter(i => i.docType !== 'F2')
-        .reduce((s, i) => s + Number(i.amount || 0), 0);
-      const total = Number(plan.contractValue || 0);
-      const remainderPct = total > 0
-        ? Math.round(((total - interimTotal) / total) * 10000) / 100
-        : 0;
-      return { ...item, percentage: remainderPct };
-    })
-  }));
-}
+function buildDelayRiskPrompt(milestones, historical, contractTotal) {
+  const { currency, fazSum, payments } = analyticsPayload(milestones, contractTotal);
+  const hist = historicalPayments(historical);
+  const remainder = contractTotal - fazSum;
 
-function buildDelayRiskPrompt(milestones, historical) {
-  const norm     = normaliseMilestonesForAnalytics(milestones);
-  const histNorm = normaliseHistoricalItems(historical);
-  const currency = norm[0]?.currency || 'EUR';
-  const totalValue = norm.reduce((s, m) => s + Number(m.amount || 0), 0);
   return `You are a payment risk analyst for industrial machinery sales contracts.
 
-SAP billing plan convention: the final F2 invoice has its percentage already corrected to the true remainder (not the SAP sentinel value of 100%). Treat it as a normal milestone when comparing to historical data.
+You are given a list of ADVANCE PAYMENTS for a contract worth ${contractTotal.toLocaleString('de-DE')} ${currency}.
+These are the actual invoices sent to the customer before project completion.
+After all advance payments, a final closing invoice collects the remaining ${remainder.toLocaleString('de-DE')} ${currency}.
 
-Current billing plan to assess:
-- Total contract value: ${totalValue} ${currency}
-- Milestones: ${JSON.stringify(norm, null, 2)}
+Advance payment schedule:
+${JSON.stringify(payments, null, 2)}
 
-Historical billing plans from real contracts with similar contract values (real production data):
-${JSON.stringify(histNorm, null, 2)}
+Historical advance payment schedules from real contracts with similar values:
+${JSON.stringify(hist, null, 2)}
 
-For each milestone in the CURRENT plan, assess payment delay risk. Consider:
-- Milestone type (FAZ = down payment / advance, F2 = final invoice)
-- Due date proximity to Q4 (Oct–Dec budgets often frozen, delay risk higher)
-- Payment terms (e.g. Z001 = immediate, Z002 = 30 days, Z127 = 127 days)
-- Incoterms (EXW = buyer collects, CIF/CIP = seller delivers — affects payment timing)
-- Historical patterns: what percentages and payment terms appear in similar real contracts
-- Contract value bracket (larger contracts have more payment friction)
-
-Return ONLY valid JSON, no markdown fences:
-{"risks":[{"milestoneNumber":1,"description":"...","riskLevel":"low|medium|high","reasoning":"one sentence referencing historical data where relevant"}],"summary":"2-3 sentence overall risk assessment referencing patterns from historical data"}`;
-}
-
-function buildOptimizationPrompt(milestones, historical) {
-  const norm     = normaliseMilestonesForAnalytics(milestones);
-  const histNorm = normaliseHistoricalItems(historical);
-  const totalValue = norm.reduce((s, m) => s + Number(m.amount || 0), 0);
-  const currency = norm[0]?.currency || 'EUR';
-  return `You are a billing plan optimization specialist for industrial machinery contracts.
-
-SAP billing plan convention: the final F2 invoice has its percentage already corrected to the true remainder (not the SAP sentinel value of 100%). Treat it as a normal milestone when comparing to historical data.
-
-Current billing milestones (total contract value: ${totalValue} ${currency}):
-${JSON.stringify(norm, null, 2)}
-
-Historical billing plans from real contracts with similar contract values (real production data):
-${JSON.stringify(histNorm, null, 2)}
-
-Using the historical data as a benchmark, suggest an optimized billing plan that:
-1. Improves the seller's cash flow (front-load payments where possible, aligned with historical best practice)
-2. Aligns milestone dates with natural project phases seen in similar contracts
-3. KEEPS the total contract value IDENTICAL (${totalValue} ${currency})
-4. Keeps the same number of milestones
-5. Sets percentage=0 for the last (final invoice) milestone in the output JSON (SAP convention)
-6. Estimate the financial savings: consider reduced days-sales-outstanding (assume 4% annual cost of capital), avoided late-payment penalties (typical 2% per late invoice), and improved cash availability. Be realistic — savings on a ${totalValue} ${currency} contract are typically between 0.5% and 3% of contract value.
+Assess payment delay risk for each advance payment. Consider:
+- Date proximity to Q4 (Oct–Dec budgets often frozen)
+- Payment terms from historical data
+- How much of the contract is secured before final delivery
+- Historical patterns for similar contract sizes
 
 Return ONLY valid JSON, no markdown fences:
-{"suggestion":[{"milestoneNumber":1,"suggestedDate":"YYYY-MM-DD","suggestedAmount":12345.00,"percentage":30.00,"description":"...","changeReason":"brief reason referencing historical pattern where relevant"}],"explanation":"2-3 sentence explanation of the optimization rationale referencing historical data","financialSavings":{"amount":15000.00,"currency":"${currency}","reasoning":"one sentence explaining what drives the saving"}}`;
+{"risks":[{"milestoneNumber":1,"description":"...","riskLevel":"low|medium|high","reasoning":"one sentence"}],"summary":"2-3 sentence overall assessment"}`;
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+function buildOptimizationPrompt(milestones, historical, contractTotal) {
+  const { currency, fazSum, payments } = analyticsPayload(milestones, contractTotal);
+  const hist = historicalPayments(historical);
+  const remainder = contractTotal - fazSum;
+
+  // List current payments with their share of the advance total for reference
+  const paymentsWithPct = payments.map(p => ({
+    ...p,
+    pct_of_advances: fazSum > 0 ? Math.round(p.amount / fazSum * 1000) / 10 : 0,
+  }));
+
+  return `You are a cash-flow optimisation specialist for industrial machinery contracts.
+
+CONTRACT FACTS (do not change these):
+- Total contract value: ${contractTotal.toLocaleString('de-DE')} ${currency}
+- Number of advance payments: ${payments.length}
+- Sum of all advance payments: ${fazSum.toLocaleString('de-DE')} ${currency}  ← THIS TOTAL MUST NOT CHANGE
+- Remaining closing payment (fixed, not part of your output): ${remainder.toLocaleString('de-DE')} ${currency}
+
+CURRENT ADVANCE PAYMENT SCHEDULE:
+${JSON.stringify(paymentsWithPct, null, 2)}
+
+TASK: Suggest a new advance payment schedule with the SAME ${payments.length} payments that STILL SUM TO EXACTLY ${fazSum.toLocaleString('de-DE')} ${currency}.
+You may only change the dates and the split of amounts between payments.
+Do NOT add or remove payments. Do NOT change the total.
+
+Optimise for:
+1. Earlier receipt of cash (front-load where possible, matching historical best practice below)
+2. Milestone dates aligned to typical project phases in similar contracts
+
+Historical advance payment patterns from real contracts with similar contract values:
+${JSON.stringify(hist, null, 2)}
+
+Estimate financial savings from earlier cash receipt: assume 4% annual cost of capital and typical 2% late-payment penalty. Be conservative — realistic savings are 0.5%–3% of the ${contractTotal.toLocaleString('de-DE')} ${currency} contract value.
+
+Return ONLY valid JSON, no markdown fences. The "suggestion" array must have exactly ${payments.length} entries and their suggestedAmount values must sum to exactly ${fazSum.toLocaleString('de-DE')} ${currency}:
+{"suggestion":[{"milestoneNumber":1,"suggestedDate":"YYYY-MM-DD","suggestedAmount":12345.00,"description":"...","changeReason":"brief reason"}],"explanation":"2-3 sentence rationale","financialSavings":{"amount":15000.00,"currency":"${currency}","reasoning":"one sentence"}}`;
+}
+
+function buildOptimizationPromptWithInstruction(milestones, historical, contractTotal, userInstruction) {
+  const base = buildOptimizationPrompt(milestones, historical, contractTotal);
+  return base + `\n\nADDITIONAL INSTRUCTION FROM USER: ${userInstruction}\nApply this instruction on top of the general optimisation goals above.`;
+}
 
 function processLLMResult(llmResult, session, sessionId) {
   let reply = '';
@@ -175,8 +183,14 @@ function processLLMResult(llmResult, session, sessionId) {
   let status = session.status;
 
   if (llmResult.type === 'tool_call' && llmResult.toolName === 'propose_milestones') {
-    milestones = llmResult.toolInput.milestones;
+    const rawMs = llmResult.toolInput.milestones;
+    milestones = rawMs.map(m => ({ ...m, billingDocumentType: 'FAZ' }));
     session.milestones = milestones;
+    session.target = {
+      amount:     Number(llmResult.toolInput.totalAmount || 0),
+      currency:   llmResult.toolInput.currency || (rawMs[0]?.currency ?? 'EUR'),
+      percentage: 100,
+    };
     status = 'milestones_proposed';
 
     const conf     = llmResult.toolInput.confidence;
@@ -200,7 +214,7 @@ function processLLMResult(llmResult, session, sessionId) {
   }
 
   session.status = status;
-  return { sessionId, reply, milestones, status };
+  return { sessionId, reply, milestones, target: session.target || null, status };
 }
 
 // ── CAP Service Implementation ────────────────────────────────────────────────
@@ -229,6 +243,38 @@ module.exports = cds.service.impl(async function (srv) {
 
     const responseData = processLLMResult(llmResult, session, sessionId);
     sessionStore.set(sessionId, session);
+
+    // If the extraction LLM returned plain text (not a new tool call) and the
+    // session already has milestones, also run the optimizer with the user's
+    // message as an additional constraint so the chat can drive the optimized plan.
+    if (llmResult.type === 'text' && session.milestones && session.milestones.length > 0) {
+      try {
+        const contractTotal = session.target?.amount || analyticsPayload(session.milestones, 0).fazSum;
+        const historical    = await getHistoricalPlans(contractTotal);
+        const prompt        = buildOptimizationPromptWithInstruction(session.milestones, historical, contractTotal, message);
+        const raw           = await aiCore.suggestText(prompt);
+        const cleaned       = raw.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
+        const parsed        = JSON.parse(cleaned);
+
+        const { fazSum }   = analyticsPayload(session.milestones, contractTotal);
+        const modelItems   = parsed.suggestion || [];
+        const modelSum     = modelItems.reduce((s, m) => s + Number(m.suggestedAmount || 0), 0);
+        const scale        = modelSum > 0 ? fazSum / modelSum : 1;
+        const suggestion   = modelItems
+          .map(m => ({
+            ...m,
+            billingDocumentType: 'FAZ',
+            suggestedAmount: Math.round(Number(m.suggestedAmount || 0) * scale * 100) / 100,
+          }))
+          .sort((a, b) => a.milestoneNumber - b.milestoneNumber);
+
+        responseData.suggestion      = suggestion;
+        responseData.explanation     = parsed.explanation || '';
+        responseData.financialSavings = parsed.financialSavings || null;
+      } catch (optErr) {
+        console.warn('[chat] Optimization step failed (non-fatal):', optErr.message);
+      }
+    }
 
     return responseData;
   });
@@ -279,9 +325,9 @@ module.exports = cds.service.impl(async function (srv) {
       return req.error(400, 'No milestones available. Please complete the extraction flow first.');
     }
 
-    const totalValue   = session.milestones.reduce((s, m) => s + Number(m.amount || 0), 0);
-    const historical   = await getHistoricalPlans(totalValue);
-    const prompt       = buildDelayRiskPrompt(session.milestones, historical);
+    const contractTotal = session.target?.amount || analyticsPayload(session.milestones, 0).fazSum;
+    const historical   = await getHistoricalPlans(contractTotal);
+    const prompt       = buildDelayRiskPrompt(session.milestones, historical, contractTotal);
 
     let raw;
     try {
@@ -360,9 +406,9 @@ module.exports = cds.service.impl(async function (srv) {
       return req.error(400, 'No milestones available. Please complete the extraction flow first.');
     }
 
-    const totalValue   = session.milestones.reduce((s, m) => s + Number(m.amount || 0), 0);
-    const historical   = await getHistoricalPlans(totalValue);
-    const prompt       = buildOptimizationPrompt(session.milestones, historical);
+    const contractTotal = session.target?.amount || analyticsPayload(session.milestones, 0).fazSum;
+    const historical    = await getHistoricalPlans(contractTotal);
+    const prompt        = buildOptimizationPrompt(session.milestones, historical, contractTotal);
 
     let raw;
     try {
@@ -374,7 +420,28 @@ module.exports = cds.service.impl(async function (srv) {
     try {
       const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
       const parsed  = JSON.parse(cleaned);
-      return { sessionId, suggestion: parsed.suggestion || [], explanation: parsed.explanation || '', financialSavings: parsed.financialSavings || null };
+
+      const { fazSum } = analyticsPayload(session.milestones, contractTotal);
+
+      // Rescale model output proportionally so FAZ amounts always sum to the original pool.
+      const modelItems  = parsed.suggestion || [];
+      const modelSum    = modelItems.reduce((s, m) => s + Number(m.suggestedAmount || 0), 0);
+      const scale       = modelSum > 0 ? fazSum / modelSum : 1;
+      const suggestion  = modelItems
+        .map(m => ({
+          ...m,
+          billingDocumentType: 'FAZ',
+          suggestedAmount: Math.round(Number(m.suggestedAmount || 0) * scale * 100) / 100,
+        }))
+        .sort((a, b) => a.milestoneNumber - b.milestoneNumber);
+
+      return {
+        sessionId,
+        suggestion,
+        explanation:     parsed.explanation || '',
+        financialSavings: parsed.financialSavings || null,
+        target:          session.target || null,
+      };
     } catch (parseErr) {
       console.error('[suggestOptimization] JSON parse error:', parseErr.message, '\nRaw:', raw);
       return req.error(500, 'Failed to parse AI response. Please try again.');

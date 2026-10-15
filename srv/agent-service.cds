@@ -21,7 +21,26 @@ service AgentService {
       currency        : String;
       description     : String;
     };
+    target : {
+      amount     : Decimal(16,2);
+      currency   : String;
+      percentage : Decimal(5,2);
+    };
     status     : String;
+    suggestion : array of {
+      milestoneNumber : Integer;
+      suggestedDate   : String;
+      suggestedAmount : Decimal(16,2);
+      description     : String;
+      changeReason    : String;
+      billingDocumentType : String;
+    };
+    explanation      : String;
+    financialSavings : {
+      amount    : Decimal(16,2);
+      currency  : String;
+      reasoning : String;
+    };
   };
 
   /**
@@ -75,6 +94,11 @@ service AgentService {
       amount    : Decimal(16,2);
       currency  : String;
       reasoning : String;
+    };
+    target : {
+      amount     : Decimal(16,2);
+      currency   : String;
+      percentage : Decimal(5,2);
     };
   };
   /**

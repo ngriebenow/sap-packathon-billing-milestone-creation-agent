@@ -14,7 +14,7 @@ When called, this tool will display the milestone table to the user for review.`
       properties: {
         milestones: {
           type: 'array',
-          description: 'Ordered list of billing milestones starting from #1. The last entry is always the final billing milestone (full invoice).',
+          description: 'Ordered list of ALL payment milestones from the contract, including the final one. All are advance payments (FAZ). Percentages must sum to 100%.',
           items: {
             type: 'object',
             required: ['milestoneNumber', 'billingDate', 'amount', 'percentage', 'currency'],
@@ -29,11 +29,11 @@ When called, this tool will display the milestone table to the user for review.`
               },
               amount: {
                 type: 'number',
-                description: 'Absolute amount to be billed at this milestone'
+                description: 'Absolute amount to be billed at this advance payment milestone'
               },
               percentage: {
                 type: 'number',
-                description: 'Percentage of total contract value. For milestones 1…(N-1) this is their partial share. For the final milestone (F2) this is always 100.'
+                description: 'Percentage of total contract value for this payment (all percentages must sum to 100)'
               },
               currency: {
                 type: 'string',
@@ -48,7 +48,7 @@ When called, this tool will display the milestone table to the user for review.`
         },
         totalAmount: {
           type: 'number',
-          description: 'Total contract value — this becomes the amount of the final billing milestone'
+          description: 'Total contract value (used as the Target reference in the UI)'
         },
         currency: {
           type: 'string',
